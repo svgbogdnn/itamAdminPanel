@@ -36,6 +36,7 @@ class Course(db.Model):
     course_code = db.Column(db.String(50), unique=True)
     category = db.Column(db.String(100))
 
+
 # Таблица занятий
 class Lesson(db.Model):
     __tablename__ = 'lessons'

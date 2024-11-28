@@ -77,13 +77,16 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
-
+        if user and check_password_hash(user.password_hash, password):
+            flash('Login successful!', category='success')
+            return redirect(url_for('auth.dashboard'))
         if user and check_password_hash(user.password_hash, password):
             flash('Login successful!', category='success')
             return redirect(url_for('auth.success'))
         else:
             flash('Invalid email or password', category='error')
     return render_template('login.html')
+
 
 
 @auth.route('/register', methods=['GET', 'POST'])
@@ -141,7 +144,6 @@ def register():
             flash('Email is already registered!', category='error')
             return redirect(url_for('auth.register'))
 
-        # Создание нового пользователя
         new_user = User(
             full_name=full_name,
             nickname=nickname,
@@ -178,7 +180,6 @@ def forgot_password():
         user = User.query.filter_by(email=email, phone_number=phone_number).first()
 
         if user:
-            # Обновляем пароль
             user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
             db.session.commit()
             flash('Password successfully updated!', category='success')
@@ -187,6 +188,7 @@ def forgot_password():
             flash('Invalid email or phone number!', category='error')
     return render_template('forgot_password.html')
 
-@auth.route('/success')
-def success():
-    return render_template('success.html')
+@auth.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+

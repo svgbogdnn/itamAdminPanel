@@ -12,6 +12,9 @@ def create_app():
     app.config.from_object('config.Config')
     db.init_app(app)
     migrate.init_app(app, db)
+    from app.routes.auth import auth
+    from app.routes.teacher import teacher
     app.register_blueprint(auth, url_prefix='/auth')
+    app.register_blueprint(teacher, url_prefix='/teacher')
     return app
 
