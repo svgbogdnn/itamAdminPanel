@@ -10,11 +10,17 @@
         <label for="full_name">Full Name (ФИО):</label>
         <input type="text" name="full_name" required><br>
 
-        <label for="nickname">Nickname:</label>
-        <input type="text" name="nickname" required><br>
+        <label for="university">University:</label>
+        <input type="text" name="university" required><br>
 
-        <label for="email">Email:</label>
-        <input type="email" name="email" required><br>
+        <label for="num_of_course">Number of Course:</label>
+        <input type="text" name="num_of_course" required><br>
+
+        <label for="institute">Institute:</label>
+        <input type="text" name="institute" required><br>
+
+        <label for="group">Group:</label>
+        <input type="text" name="group" required><br>
 
         <label for="role">Role:</label>
         <select name="role" required>
@@ -23,6 +29,9 @@
             <option value="Admin">Admin</option>
         </select><br>
 
+        <label for="email">Email:</label>
+        <input type="email" name="email" required><br>
+
         <label for="password">Password:</label>
         <input type="password" name="password" required><br>
 
@@ -30,27 +39,19 @@
         <input type="password" name="confirm_password" required><br>
 
         <label for="phone_number">Phone Number:</label>
-        <input type="tel" name="phone_number"><br>
+        <input type="text" name="phone_number"><br>
 
         <label for="date_of_birth">Date of Birth:</label>
         <input type="date" name="date_of_birth" required><br>
 
-        <label for="num_of_course">Number of Course:</label>
-        <input type="text" name="num_of_course" required><br>
-
-        <label for="university">University:</label>
-        <input type="text" name="university" required><br>
-
-        <label for="group">Group:</label>
-        <input type="text" name="group" required><br>
-
-        <label for="accept_policy">
+        <label>
             <input type="checkbox" name="accept_policy" required>
-            I accept the <a href="{{ url_for('auth.policy') }}">site policy</a>
+            I accept the <a href="{{ url_for('auth.policy') }}">site policy</a>.
         </label><br>
 
         <button type="submit">Register</button>
     </form>
+
 
     <a href="{{ url_for('auth.login') }}">Already have an account? Login here</a>
 

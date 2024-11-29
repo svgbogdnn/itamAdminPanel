@@ -88,29 +88,28 @@ def login():
     return render_template('login.html')
 
 
-
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         # Собираем данные из формы
         full_name = request.form.get('full_name')
-        nickname = request.form.get('nickname')
-        email = request.form.get('email')
+        university = request.form.get('university')
+        num_of_course = request.form.get('num_of_course')
+        institute = request.form.get('institute')
+        group = request.form.get('group')
         role = request.form.get('role')
+        email = request.form.get('email')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         phone_number = request.form.get('phone_number')
         date_of_birth = request.form.get('date_of_birth')
-        num_of_course = request.form.get('num_of_course')
-        university = request.form.get('university')
-        group = request.form.get('group')
         accept_policy = request.form.get('accept_policy')
 
         # validation
         validations = [
             validate_full_name(full_name),
             validate_email(email),
-            validate_nickname(nickname),
+            validate_nickname(role),  # Если роль связана с никнеймом
             validate_passwords(password, confirm_password),
             validate_phone_number(phone_number),
             validate_date_of_birth(date_of_birth),
@@ -123,8 +122,9 @@ def register():
                 return redirect(url_for('auth.register'))
 
         # Проверка обязательных полей
-        if not all([full_name, nickname, email, role, password, confirm_password,
-                    date_of_birth, num_of_course, university, group]):
+        if not all([full_name, university, num_of_course, institute, group,
+                    role, email, password, confirm_password, phone_number,
+                    date_of_birth]):
             flash('All fields are required!', category='error')
             return redirect(url_for('auth.register'))
 
@@ -144,17 +144,18 @@ def register():
             flash('Email is already registered!', category='error')
             return redirect(url_for('auth.register'))
 
+        # Создание нового пользователя
         new_user = User(
             full_name=full_name,
-            nickname=nickname,
-            email=email,
+            university=university,
+            num_of_course=num_of_course,
+            institute=institute,
+            group=group,
             role=role,
+            email=email,
             password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
             phone_number=phone_number,
             date_of_birth=date_of_birth,
-            num_of_course=num_of_course,
-            university=university,
-            group=group,
             accept_policy=True if accept_policy == 'on' else False,
         )
         db.session.add(new_user)
@@ -162,6 +163,7 @@ def register():
         flash('Account created successfully!', category='success')
         return redirect(url_for('auth.login'))
     return render_template('register.html')
+
 
 # site policy
 @auth.route('/register/policy')
@@ -172,12 +174,13 @@ def policy():
 @auth.route('/login/repassword', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
+        full_name = request.form.get('full_name')
         email = request.form.get('email')
         phone_number = request.form.get('phone_number')
         new_password = request.form.get('new_password')
 
-        # Проверка пользователя по email и телефону
-        user = User.query.filter_by(email=email, phone_number=phone_number).first()
+        # Проверка пользователя по ФИО, email и телефону
+        user = User.query.filter_by(full_name=full_name, email=email, phone_number=phone_number).first()
 
         if user:
             user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
@@ -185,8 +188,9 @@ def forgot_password():
             flash('Password successfully updated!', category='success')
             return redirect(url_for('auth.login'))
         else:
-            flash('Invalid email or phone number!', category='error')
+            flash('Invalid full name, email, or phone number!', category='error')
     return render_template('forgot_password.html')
+
 
 @auth.route('/dashboard')
 def dashboard():
