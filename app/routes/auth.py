@@ -1,60 +1,3 @@
-'''from flask import Blueprint, render_template, redirect, url_for, request, flash
-from werkzeug.security import generate_password_hash, check_password_hash
-from app import db
-from app.models import User
-
-auth = Blueprint('auth', __name__, template_folder='templates')
-
-@auth.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        user = User.query.filter_by(email=email).first()
-
-        if user and check_password_hash(user.password_hash, password):
-            flash('Login successful!', category='success')
-            return redirect(url_for('auth.success'))
-        else:
-            flash('Invalid email or password', category='error')
-    return render_template('login.html')
-
-
-@auth.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        full_name = request.form.get('full_name')
-        num_of_course = request.form.get('num_of_course')
-        university = request.form.get('university')  # доп поля
-        group = request.form.get('group')
-
-        # Проверяем, что обязательные поля не пустые
-        if not num_of_course or not university or not group:
-            flash('All fields are required!', category='error')
-            return redirect(url_for('auth.register'))
-
-        new_user = User(
-            email=email,
-            full_name=full_name,
-            password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
-            role='student',
-            num_of_course=num_of_course,
-            university=university,
-            group=group,
-        )
-        db.session.add(new_user)
-        db.session.commit()
-        flash('Account created successfully!', category='success')
-        return redirect(url_for('auth.login'))
-    return render_template('register.html')
-
-
-@auth.route('/success')
-def success():
-    return render_template('success.html')
-'''
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
@@ -86,7 +29,6 @@ def login():
         else:
             flash('Invalid email or password', category='error')
     return render_template('login.html')
-
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
@@ -190,7 +132,6 @@ def forgot_password():
         else:
             flash('Invalid full name, email, or phone number!', category='error')
     return render_template('forgot_password.html')
-
 
 @auth.route('/dashboard')
 def dashboard():

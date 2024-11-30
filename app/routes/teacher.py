@@ -1,25 +1,106 @@
-from flask import redirect, url_for, flash
-from flask import Blueprint, render_template
-from flask import request
+from flask import render_template, request, redirect, url_for, flash, Blueprint
 from app.models import Course
 from app import db
+from app.models import Lesson, Attendance, Feedback
+from datetime import datetime
 
 teacher = Blueprint('teacher', __name__, template_folder='templates')
 
-@teacher.route('/attendance')
+@teacher.route('/attendance', methods=['GET'])
 def attendance():
     teacher_id = 44
-    return "<h1>Attendance Page</h1>"
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+    lessons = Lesson.query.filter(Lesson.course_id.in_([course.id for course in courses])).all()
+    return render_template('teacher/attendance.html', courses=courses, lessons=lessons)
 
-@teacher.route('/feedback')
+@teacher.route('/feedback', methods=['GET'])
 def feedback():
     teacher_id = 44
-    return "<h1>Feedback Page</h1>"
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+    feedback_records = []
 
-@teacher.route('/export')
-def export():
-    teacher_id = 44
-    return "<h1>Export Page</h1>"
+    # Получаем отзывы для каждого курса и урока
+    for course in courses:
+        lessons = Lesson.query.filter_by(course_id=course.id).all()
+        for lesson in lessons:
+            feedback_records.extend(Feedback.query.filter_by(lesson_id=lesson.id).all())
+
+    # Фильтрация и сортировка
+    sort_by = request.args.get('sort_by', 'date')  # По умолчанию сортируем по дате
+    sort_order = request.args.get('sort_order', 'asc')  # По умолчанию по возрастанию
+
+    if sort_by == 'mark':
+        feedback_records = sorted(feedback_records, key=lambda f: f.mark, reverse=(sort_order == 'desc'))
+    elif sort_by == 'date':
+        feedback_records = sorted(feedback_records, key=lambda f: f.exact_time, reverse=(sort_order == 'desc'))
+
+    # Добавляем среднюю оценку и описание качества курса
+    for course in courses:
+        course.avg_rating = course.average_rating  # Средняя оценка
+        course.quality = course.course_quality  # Качество курса
+
+    return render_template('teacher/feedback.html', courses=courses, feedback_records=feedback_records)
+
+@teacher.route('/feedback/response/<int:feedback_id>', methods=['POST'])
+def reply_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    response = request.form['response']
+    feedback.response_on_feedback = response  # Ответ преподавателя
+
+    db.session.commit()
+
+    flash('Response added successfully!', 'success')
+    return redirect(url_for('teacher.feedback'))
+
+@teacher.route('/feedback/hide/<int:feedback_id>', methods=['POST'])
+def hide_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    feedback.is_hidden = True  # Скрываем фидбек (нужно добавить поле в модели)
+
+    db.session.commit()
+
+    flash('Feedback hidden successfully!', 'success')
+    return redirect(url_for('teacher.feedback'))
+@teacher.route('/feedback/unhide/<int:feedback_id>', methods=['POST'])
+
+def unhide_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    feedback.is_hidden = False  # Восстанавливаем фидбек
+
+    db.session.commit()
+
+    flash('Feedback restored successfully!', 'success')
+    return redirect(url_for('teacher.feedback'))
+
+@teacher.route('/feedback/<int:lesson_id>', methods=['GET', 'POST'])
+def submit_feedback(lesson_id):
+    lesson = Lesson.query.get_or_404(lesson_id)
+    feedbacks = Feedback.query.filter_by(lesson_id=lesson_id).all()
+    if request.method == 'POST':
+        # Получаем данные формы
+        mark = request.form['mark']
+        comment = request.form['comment']
+        anonymous = 'anonymous' in request.form
+        feedback_type = request.form['type']
+        student_id = request.form['student_id']  # Здесь получаем ID студента из формы
+
+        # Создаем новый объект Feedback
+        feedback = Feedback(
+            lesson_id=lesson.id,
+            student_id=student_id,  # Используем переданный ID студента
+            mark=mark,
+            comment=comment,
+            anonymous=anonymous,
+            type=feedback_type
+        )
+
+        db.session.add(feedback)
+        db.session.commit()
+
+        flash('Feedback submitted successfully!', 'success')
+        return redirect(url_for('teacher.feedback', lesson_id=lesson.id))
+
+    return render_template('teacher/manage_feedback.html', lesson=lesson)
 
 @teacher.route('/courses', methods=['GET'])
 def courses():
@@ -117,3 +198,37 @@ def delete_course(course_id):
     db.session.commit()
     flash('Course deleted successfully!', category='success')
     return redirect(url_for('teacher.courses'))
+
+
+@teacher.route('/attendance/<int:lesson_id>', methods=['GET', 'POST'])
+def manage_attendance(lesson_id):
+    # Получаем урок
+    lesson = Lesson.query.get(lesson_id)
+    if not lesson:
+        flash('Lesson not found!', category='error')
+        return redirect(url_for('teacher.attendance'))
+
+    # Получаем курс, связанный с уроком
+    course = Course.query.get(lesson.course_id)
+    if not course:
+        flash('Course not found!', category='error')
+        return redirect(url_for('teacher.attendance'))
+
+    # Получаем студентов и их посещаемость
+    attendance_records = Attendance.query.filter_by(lesson_id=lesson_id).all()
+
+    if request.method == 'POST':
+        # Обработка изменения статуса студентов
+        for record in attendance_records:
+            status = request.form.get(f'status_{record.id}')
+            comment = request.form.get(f'comment_{record.id}')
+            reason = request.form.get(f'reason_{record.id}')
+            record.status = status
+            record.comments = comment
+            record.reason_of_excuse = reason
+        db.session.commit()
+        flash('Attendance updated successfully!', category='success')
+        return redirect(url_for('teacher.manage_attendance', lesson_id=lesson_id))
+
+    return render_template('teacher/manage_attendance.html', lesson=lesson, course=course,
+                           attendance_records=attendance_records)

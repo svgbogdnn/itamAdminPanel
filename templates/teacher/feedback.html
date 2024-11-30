@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Feedback Management</title>
+</head>
+<body>
+    <h1>Feedback for Your Courses</h1>
+
+    <!-- Фильтрация -->
+    <form method="GET" action="{{ url_for('teacher.feedback') }}">
+        <label for="sort_by">Sort by:</label>
+        <select name="sort_by">
+            <option value="date">Date</option>
+            <option value="mark">Mark</option>
+        </select>
+
+        <label for="sort_order">Order:</label>
+        <select name="sort_order">
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+        </select>
+
+        <button type="submit">Apply Filters</button>
+    </form>
+
+    {% for course in courses %}
+        {% if course.lessons|length > 0 %}  <!-- Только курсы с уроками -->
+            <h2>{{ course.name }}</h2>
+            <!-- Отображаем среднюю оценку и качество курса -->
+            <p>Average Rating: {{ course.average_rating }}</p>
+            <p>Course Quality: {{ course.course_quality }}</p>
+
+            <table border="1">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Mark</th>
+                        <th>Student</th>
+                        <th>Feedback</th>
+                        <th>Actions</th>  <!-- Кнопки действий -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lesson in course.lessons %}
+                        {% for feedback in feedback_records %}
+                            {% if feedback.lesson_id == lesson.id %}
+                                <tr {% if feedback.is_hidden %}style="display:none"{% endif %}>
+                                    <td>{{ lesson.date }}</td> <!-- Показываем только дату урока -->
+                                    <td>{{ feedback.mark }}</td> <!-- Показываем оценку -->
+                                    <td>{{ feedback.student.full_name }}</td>
+                                    <td>{{ feedback.comment }}</td>
+                                    <td>
+                                        <!-- Кнопка ответа -->
+                                        <form method="POST" action="{{ url_for('teacher.reply_feedback', feedback_id=feedback.id) }}">
+                                            <input type="text" name="response" placeholder="Reply to feedback">
+                                            <button type="submit">Reply</button>
+                                        </form>
+
+                                        <!-- Кнопка скрытия фидбека -->
+                                        <form method="POST" action="{{ url_for('teacher.hide_feedback', feedback_id=feedback.id) }}">
+                                            <button type="submit">Hide</button>
+                                        </form>
+
+                                        <!-- Кнопка восстановления скрытого фидбека -->
+                                        <form method="POST" action="{{ url_for('teacher.unhide_feedback', feedback_id=feedback.id) }}">
+                                            <button type="submit">Unhide</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endfor %}
+</body>
+</html>

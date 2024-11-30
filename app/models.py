@@ -1,5 +1,6 @@
 from app import db
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import aliased
 
 # Таблица пользователей
 class User(db.Model):
@@ -23,7 +24,8 @@ class User(db.Model):
     date_of_birth = db.Column(db.Date, nullable=False)  # Дата рождения
     accept_policy = db.Column(db.Boolean, nullable=False)  # Чекбокс принятия политики
 
-# Таблица курсов
+from sqlalchemy.orm import aliased
+
 class Course(db.Model):
     __tablename__ = 'courses'
 
@@ -49,12 +51,34 @@ class Course(db.Model):
     )
     feedback = db.relationship(
         'Feedback',
-        backref='course',
+        backref='course_feedbacks',
         cascade="all, delete-orphan"
     )
+
     @property
     def students_count(self):
         return len(self.students)
+
+    def average_rating(self):
+        # Используем db.session для явного запроса
+        feedbacks = Feedback.query.filter_by(course_id=self.id).all()
+        if feedbacks:
+            total_marks = sum(f.mark for f in feedbacks)
+            return total_marks / len(feedbacks)
+        return 0
+
+    def course_quality(self):
+        avg_rating = self.average_rating()
+        if avg_rating >= 4.8:
+            return "Excellent course, everything is clear"
+        elif 4.3 <= avg_rating < 4.8:
+            return "Approximately good, but something missed"
+        elif 4 < avg_rating < 4.3:
+            return "Awesome"
+        elif 3.5 < avg_rating < 4:
+            return "Not that bad"
+        else:
+            return "Needs Improvement"
 
 
 # Таблица студентов
@@ -108,6 +132,7 @@ class Attendance(db.Model):
     status = db.Column(db.String(50), nullable=False)  # was/not
     comments = db.Column(db.Text)
     reason_of_excuse = db.Column(db.Text)
+    student = db.relationship('User', backref='attendance_records')
 
 # Таблица отзывов
 class Feedback(db.Model):
@@ -123,6 +148,10 @@ class Feedback(db.Model):
     anonymous = db.Column(db.Boolean, default=False)
     type = db.Column(db.String(50))
     response_on_feedback = db.Column(db.Text)
+    lesson = db.relationship('Lesson', lazy=True)
+    student = db.relationship('User', lazy=True)
+    course = db.relationship('Course', lazy=True, overlaps="course_feedbacks,feedback")
+    is_hidden = db.Column(db.Boolean, default=False)  # скрыть фидбек
 
 # Таблица уведомлений
 class Notification(db.Model):
@@ -164,6 +193,7 @@ class ExtraMaterial(db.Model):
     description = db.Column(db.Text)
     file_path = db.Column(db.Text, nullable=False)
     uploaded_at = db.Column(db.DateTime, default=db.func.now())
+    need_to_delete = db.Column(db.String(10), nullable=False) # to upgrade db
 
 # Таблица логов
 class Log(db.Model):
@@ -175,3 +205,4 @@ class Log(db.Model):
     target_id = db.Column(db.Integer)
     target_type = db.Column(db.String(50))
     timestamp = db.Column(db.DateTime, default=db.func.now())
+
