@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{{course.name}}</title>
+</head>
+<body>
+<div>
+    <h1>{{course.name}}</h1>
+</div>
+<div>
+Направление: {{course.category}}
+    </div>
+<div>
+Преподаватель: {{tutor.full_name}}
+    </div>
+<div>
+Описание: {{course.description}}
+    </div>
+<div>
+Дата начала: {{course.start_date}}
+    </div>
+<div>
+Дата окончания: {{course.end_date}}
+    </div>
+<div>
+Статус: {{course.status}}
+    </div>
+<div>
+    <h3>Уроки</h3>
+    {%if lessons | length>0  %}
+        {% for el in lessons%}
+            <form action="" method="post">
+                <input type="hidden" name="lesson_id" value='el.id'>
+                <a onclick="this.parentNode.submit();">{{el.topic}}</a>
+            </form>
+        {% endfor %}
+    {% endif %}
+
+</div>
+</body>
+</html>

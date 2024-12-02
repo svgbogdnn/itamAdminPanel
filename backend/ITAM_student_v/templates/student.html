@@ -10,11 +10,21 @@
     <h3>Курсы</h3>
     {%if Attended_courses | length>0  %}
         {% for el in Attended_courses%}
-            <div>
-                <a class="btn btn-warning" href=f"/student/courses/<{el.course_id}>{{el.course.name}}</a>
-            </div>
+            <form action="" method="post">
+                <input type="hidden" name="course_id" value='{{el.course_id}}'>
+                <input type="hidden" name="student_id" value=''>
+                <a onclick="this.parentNode.submit();">{{el.course.name}}</a>
+
+            </form>
         {% endfor %}
     {% endif %}
+
+</div>
+<form action="" method="post">
+                <input type="hidden" name="student_id" value='{{student.id}}'>
+                <a onclick="this.parentNode.submit();">Записаться на новый курс</a>
+</form>
+<div>
 
 </div>
 </body>
