@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
-from app.models import User
 from app.utils.validators import (
     validate_full_name,
     validate_email,
@@ -11,27 +10,42 @@ from app.utils.validators import (
     validate_date_of_birth,
     validate_accept_policy,
 )
+from flask_login import login_user, login_required, logout_user, current_user
 
 auth = Blueprint('auth', __name__, template_folder='templates')
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
+    from app.models import User  # импорт внутри функции для избежания круговой зависимости
+
+    if current_user.is_authenticated:
+        return redirect(url_for('teacher.dashboard'))
+
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password_hash, password):
+
+        if user and user.check_password(password):
+            login_user(user)
             flash('Login successful!', category='success')
-            return redirect(url_for('auth.dashboard'))
-        if user and check_password_hash(user.password_hash, password):
-            flash('Login successful!', category='success')
-            return redirect(url_for('auth.success'))
-        else:
-            flash('Invalid email or password', category='error')
+            return redirect(url_for('teacher.dashboard'))
+
+        flash('Invalid email or password', category='error')
+
     return render_template('login.html')
+
+
+@auth.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out.', category='success')
+    return redirect(url_for('auth.login'))
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
+    from app.models import User
     if request.method == 'POST':
         # Собираем данные из формы
         full_name = request.form.get('full_name')
@@ -41,6 +55,7 @@ def register():
         group = request.form.get('group')
         role = request.form.get('role')
         email = request.form.get('email')
+        nickname = request.form.get('nickname')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         phone_number = request.form.get('phone_number')
@@ -51,7 +66,7 @@ def register():
         validations = [
             validate_full_name(full_name),
             validate_email(email),
-            validate_nickname(role),  # Если роль связана с никнеймом
+            validate_nickname(nickname),
             validate_passwords(password, confirm_password),
             validate_phone_number(phone_number),
             validate_date_of_birth(date_of_birth),
@@ -65,7 +80,7 @@ def register():
 
         # Проверка обязательных полей
         if not all([full_name, university, num_of_course, institute, group,
-                    role, email, password, confirm_password, phone_number,
+                    role, email, nickname, password, confirm_password, phone_number,
                     date_of_birth]):
             flash('All fields are required!', category='error')
             return redirect(url_for('auth.register'))
@@ -95,6 +110,7 @@ def register():
             group=group,
             role=role,
             email=email,
+            nickname=nickname,
             password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
             phone_number=phone_number,
             date_of_birth=date_of_birth,
@@ -102,10 +118,10 @@ def register():
         )
         db.session.add(new_user)
         db.session.commit()
+        login_user(new_user)
         flash('Account created successfully!', category='success')
         return redirect(url_for('auth.login'))
     return render_template('register.html')
-
 
 # site policy
 @auth.route('/register/policy')
@@ -115,6 +131,7 @@ def policy():
 # change password
 @auth.route('/login/repassword', methods=['GET', 'POST'])
 def forgot_password():
+    from app.models import User
     if request.method == 'POST':
         full_name = request.form.get('full_name')
         email = request.form.get('email')
@@ -125,9 +142,10 @@ def forgot_password():
         user = User.query.filter_by(full_name=full_name, email=email, phone_number=phone_number).first()
 
         if user:
-            user.password_hash = generate_password_hash(new_password, method='pbkdf2:sha256')
+            new_password = request.form['new_password']
+            user.password_hash = generate_password_hash(new_password)
             db.session.commit()
-            flash('Password successfully updated!', category='success')
+            flash('Password successfully updated', 'success')
             return redirect(url_for('auth.login'))
         else:
             flash('Invalid full name, email, or phone number!', category='error')

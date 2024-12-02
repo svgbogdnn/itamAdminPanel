@@ -1,21 +1,33 @@
-from flask import render_template, request, redirect, url_for, flash, Blueprint
+from flask import render_template, request, redirect, url_for, flash, Blueprint, Response
 from app.models import Course
 from app import db
-from app.models import Lesson, Attendance, Feedback
+from app.models import Lesson, Attendance, Feedback, Course
 from datetime import datetime
+#for export
+import csv
+from io import StringIO
+from openpyxl import Workbook
+from io import BytesIO
+from flask import send_file
+from flask_login import current_user, login_required
 
 teacher = Blueprint('teacher', __name__, template_folder='templates')
 
+@teacher.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
+
 @teacher.route('/attendance', methods=['GET'])
 def attendance():
-    teacher_id = 44
+    teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     lessons = Lesson.query.filter(Lesson.course_id.in_([course.id for course in courses])).all()
     return render_template('teacher/attendance.html', courses=courses, lessons=lessons)
 
 @teacher.route('/feedback', methods=['GET'])
 def feedback():
-    teacher_id = 44
+    teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     feedback_records = []
 
@@ -104,24 +116,24 @@ def submit_feedback(lesson_id):
 
 @teacher.route('/courses', methods=['GET'])
 def courses():
-    teacher_id = 44
+    teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     return render_template('teacher/courses.html', courses=courses)
 
 @teacher.route('/courses/<int:course_id>/lessons', methods=['GET'])
 def lessons(course_id):
-    teacher_id = 44
+    teacher_id = current_user.id
     return f"Lessons for course ID: {course_id}"
 
 @teacher.route('/courses/<int:course_id>')
 def course_details(course_id):
-    teacher_id = 44
+    teacher_id = current_user.id
     course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first_or_404()
     return f"Details for course: {course.name}"
 
 @teacher.route('/courses/<int:course_id>/students', methods=['GET'])
 def view_students(course_id):
-    teacher_id = 44
+    teacher_id = current_user.id
     course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first()
     if not course:
         flash('Course not found!', category='error')
@@ -132,7 +144,7 @@ def view_students(course_id):
 
 @teacher.route('/courses/<int:course_id>/feedback', methods=['GET'])
 def analyze_feedback(course_id):
-    teacher_id = 44  # Заглушка для текущего учителя
+    teacher_id = current_user.id  # Заглушка для текущего учителя
     course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first()
     if not course:
         flash('Course not found!', category='error')
@@ -159,7 +171,7 @@ def add_course():
         category = request.form.get('category')
 
         # Заглушка для ID преподавателя
-        teacher_id = 44
+        teacher_id = current_user.id
 
         new_course = Course(
             name=name,
@@ -232,3 +244,119 @@ def manage_attendance(lesson_id):
 
     return render_template('teacher/manage_attendance.html', lesson=lesson, course=course,
                            attendance_records=attendance_records)
+
+@teacher.route('/export/csv', methods=['GET'])
+def export_csv():
+    teacher_id = current_user.id
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+
+    # Получаем параметры фильтрации
+    course_filter = request.args.get('course', None)
+    date_filter = request.args.get('date', None)
+    student_filter = request.args.get('student', None)
+
+    query = Feedback.query
+
+    if course_filter:
+        query = query.filter_by(course_id=course_filter)
+    if date_filter:
+        query = query.filter(Feedback.exact_time >= date_filter)
+    if student_filter:
+        query = query.filter_by(student_id=student_filter)
+
+    filtered_feedbacks = query.all()
+
+    # Подготовка данных для CSV
+    si = StringIO()
+    writer = csv.writer(si)
+    writer.writerow(['Course', 'Student', 'Mark', 'Comment'])
+    for feedback in filtered_feedbacks:
+        writer.writerow([feedback.course.name, feedback.student.full_name, feedback.mark, feedback.comment])
+
+    output = si.getvalue()
+    response = Response(output, mimetype='text/csv')
+    response.headers['Content-Disposition'] = 'attachment; filename=feedback_export.csv'
+    return response
+
+@teacher.route('/export', methods=['GET', 'POST'])
+def export():
+    # if group or student = None ==> all groups or students
+    if request.method == 'POST':
+        # Получаем параметры фильтрации из формы
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+        data_type = request.form.get('data_type', 'attendance')  # По умолчанию экспорт посещаемости
+        course_filter = request.form.get('course')
+        #make a temporary filter for students like online fil
+        group_filter = request.form.get('group')
+        student_filter = request.form.get('student')
+
+        # Преобразуем start_date и end_date в формат datetime.date
+        start_date = None
+        end_date = None
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                start_date = None  # Если дата некорректная, игнорируем фильтрацию по дате
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                end_date = None  # Если дата некорректная, игнорируем фильтрацию по дате
+
+        # Получаем курсы, которые доступны для учителя
+        teacher_id = current_user.id  # Для теста можно использовать статическое значение
+        courses = Course.query.filter_by(tutor_id=teacher_id).all()
+
+        if data_type == 'attendance':
+            attendance_records = []
+            for course in courses:
+                if course_filter and str(course.id) != course_filter:
+                    continue  # Пропустить курс, если фильтр не совпадает
+                lessons = Lesson.query.filter_by(course_id=course.id).all()
+                for lesson in lessons:
+                    attendance_records.extend(Attendance.query.filter_by(lesson_id=lesson.id).all())
+
+            # Фильтрация по датам
+            if start_date:
+                attendance_records = [a for a in attendance_records if a.lesson.date >= start_date]
+            if end_date:
+                attendance_records = [a for a in attendance_records if a.lesson.date <= end_date]
+
+            # Фильтрация по студенту
+            if student_filter:
+                attendance_records = [a for a in attendance_records if student_filter.lower() in a.student.full_name.lower()]
+
+            # Фильтрация по группе
+            if group_filter:
+                attendance_records = [a for a in attendance_records if group_filter.lower() in a.student.group.lower()]
+
+            # Экспорт в Excel
+            wb = Workbook()
+            ws = wb.active
+            ws.append(["Student Name", "Course Name", "Lesson Date", "Status", "Comments", "Reason of Excuse"])
+
+            for record in attendance_records:
+                student_name = record.student.full_name
+                course_name = record.lesson.course.name
+                lesson_date = record.lesson.date
+                status = record.status
+                comments = record.comments
+                reason_of_excuse = record.reason_of_excuse
+                ws.append([student_name, course_name, lesson_date, status, comments, reason_of_excuse])
+
+            # Сохранение в буфер
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+
+            # Отправка файла пользователю
+            return send_file(output, as_attachment=True, download_name="attendance_export.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+    else:
+        # Для GET-запроса показываем форму с выбором
+        teacher_id = current_user.id  # Для теста можно использовать статическое значение
+        courses = Course.query.filter_by(tutor_id=teacher_id).all()
+
+        return render_template('teacher/export.html', courses=courses)

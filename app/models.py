@@ -1,9 +1,14 @@
 from app import db
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased
+from flask_login import UserMixin
+from app import login_manager
+
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Таблица пользователей
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -24,7 +29,27 @@ class User(db.Model):
     date_of_birth = db.Column(db.Date, nullable=False)  # Дата рождения
     accept_policy = db.Column(db.Boolean, nullable=False)  # Чекбокс принятия политики
 
-from sqlalchemy.orm import aliased
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    @staticmethod
+    def get_by_email(email):
+        return User.query.filter_by(email=email).first()
+
+    def __repr__(self):
+        return f'<User {self.full_name}>'
+
+    def get_id(self):
+        return str(self.id)
+
+@login_manager.user_loader
+def load_user(user_id):
+    from app.models import User  # импорт внутри функции
+    return User.query.get(int(user_id))
+
 
 class Course(db.Model):
     __tablename__ = 'courses'
@@ -109,7 +134,6 @@ course_student_association = db.Table(
         db.Column('student_id', db.Integer, db.ForeignKey('students.id'), primary_key=True),
     )
 
-
 # Таблица занятий
 class Lesson(db.Model):
     __tablename__ = 'lessons'
@@ -121,6 +145,8 @@ class Lesson(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time)
     location = db.Column(db.String(255))
+    # Уникальный backref для attendance_records
+    attendance_records = db.relationship('Attendance', backref='lesson_record', lazy=True)
 
 # Таблица посещаемости
 class Attendance(db.Model):
@@ -133,6 +159,8 @@ class Attendance(db.Model):
     comments = db.Column(db.Text)
     reason_of_excuse = db.Column(db.Text)
     student = db.relationship('User', backref='attendance_records')
+    # Используем 'attendances' или другое уникальное имя
+    lesson = db.relationship('Lesson', backref='attendances_list')  # Уникальный backref
 
 # Таблица отзывов
 class Feedback(db.Model):
