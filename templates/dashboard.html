@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <title>Dashboard</title>
     <form action="{{ url_for('auth.logout') }}" method="POST">
         <button type="submit">Logout</button>
@@ -87,6 +88,15 @@
             <input type="text" placeholder="Search students, courses, or lessons">
         </div>
         <button class="profile-button">Profile</button>
+    </div>
+    <div class="container">
+        <!-- Добавить курс и урок -->
+        <div class="add-buttons">
+            <a href="{{ url_for('teacher.add_course') }}" class="btn btn-primary">Добавить курс</a>
+            <a href="{{ url_for('teacher.add_lesson') }}" class="btn btn-secondary">Добавить урок</a>
+        </div>
+
+        <!-- Остальная часть страницы -->
     </div>
 
     <button class="notifications-button">Notifications</button>

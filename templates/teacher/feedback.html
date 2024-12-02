@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Feedback Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <h1>Feedback for Your Courses</h1>
-
+    {% include 'navbar.html' %}
     <!-- Фильтрация -->
     <form method="GET" action="{{ url_for('teacher.feedback') }}">
         <label for="sort_by">Sort by:</label>

@@ -10,155 +10,35 @@ from openpyxl import Workbook
 from io import BytesIO
 from flask import send_file
 from flask_login import current_user, login_required
-
+#maintain my man
 teacher = Blueprint('teacher', __name__, template_folder='templates')
 
+'''Overall settings'''
 @teacher.route('/dashboard')
 @login_required
 def dashboard():
     return render_template('dashboard.html')
 
-@teacher.route('/attendance', methods=['GET'])
-def attendance():
-    teacher_id = current_user.id
-    courses = Course.query.filter_by(tutor_id=teacher_id).all()
-    lessons = Lesson.query.filter(Lesson.course_id.in_([course.id for course in courses])).all()
-    return render_template('teacher/attendance.html', courses=courses, lessons=lessons)
+@teacher.route('/notifications')
+def notifications():
+    return render_template('teacher/notifications.html')
 
-@teacher.route('/feedback', methods=['GET'])
-def feedback():
-    teacher_id = current_user.id
-    courses = Course.query.filter_by(tutor_id=teacher_id).all()
-    feedback_records = []
+@teacher.route('/teacher/profile')
+def profile():
+    return render_template('teacher/profile.html')
 
-    # Получаем отзывы для каждого курса и урока
-    for course in courses:
-        lessons = Lesson.query.filter_by(course_id=course.id).all()
-        for lesson in lessons:
-            feedback_records.extend(Feedback.query.filter_by(lesson_id=lesson.id).all())
-
-    # Фильтрация и сортировка
-    sort_by = request.args.get('sort_by', 'date')  # По умолчанию сортируем по дате
-    sort_order = request.args.get('sort_order', 'asc')  # По умолчанию по возрастанию
-
-    if sort_by == 'mark':
-        feedback_records = sorted(feedback_records, key=lambda f: f.mark, reverse=(sort_order == 'desc'))
-    elif sort_by == 'date':
-        feedback_records = sorted(feedback_records, key=lambda f: f.exact_time, reverse=(sort_order == 'desc'))
-
-    # Добавляем среднюю оценку и описание качества курса
-    for course in courses:
-        course.avg_rating = course.average_rating  # Средняя оценка
-        course.quality = course.course_quality  # Качество курса
-
-    return render_template('teacher/feedback.html', courses=courses, feedback_records=feedback_records)
-
-@teacher.route('/feedback/response/<int:feedback_id>', methods=['POST'])
-def reply_feedback(feedback_id):
-    feedback = Feedback.query.get_or_404(feedback_id)
-    response = request.form['response']
-    feedback.response_on_feedback = response  # Ответ преподавателя
-
-    db.session.commit()
-
-    flash('Response added successfully!', 'success')
-    return redirect(url_for('teacher.feedback'))
-
-@teacher.route('/feedback/hide/<int:feedback_id>', methods=['POST'])
-def hide_feedback(feedback_id):
-    feedback = Feedback.query.get_or_404(feedback_id)
-    feedback.is_hidden = True  # Скрываем фидбек (нужно добавить поле в модели)
-
-    db.session.commit()
-
-    flash('Feedback hidden successfully!', 'success')
-    return redirect(url_for('teacher.feedback'))
-@teacher.route('/feedback/unhide/<int:feedback_id>', methods=['POST'])
-
-def unhide_feedback(feedback_id):
-    feedback = Feedback.query.get_or_404(feedback_id)
-    feedback.is_hidden = False  # Восстанавливаем фидбек
-
-    db.session.commit()
-
-    flash('Feedback restored successfully!', 'success')
-    return redirect(url_for('teacher.feedback'))
-
-@teacher.route('/feedback/<int:lesson_id>', methods=['GET', 'POST'])
-def submit_feedback(lesson_id):
-    lesson = Lesson.query.get_or_404(lesson_id)
-    feedbacks = Feedback.query.filter_by(lesson_id=lesson_id).all()
-    if request.method == 'POST':
-        # Получаем данные формы
-        mark = request.form['mark']
-        comment = request.form['comment']
-        anonymous = 'anonymous' in request.form
-        feedback_type = request.form['type']
-        student_id = request.form['student_id']  # Здесь получаем ID студента из формы
-
-        # Создаем новый объект Feedback
-        feedback = Feedback(
-            lesson_id=lesson.id,
-            student_id=student_id,  # Используем переданный ID студента
-            mark=mark,
-            comment=comment,
-            anonymous=anonymous,
-            type=feedback_type
-        )
-
-        db.session.add(feedback)
-        db.session.commit()
-
-        flash('Feedback submitted successfully!', 'success')
-        return redirect(url_for('teacher.feedback', lesson_id=lesson.id))
-
-    return render_template('teacher/manage_feedback.html', lesson=lesson)
-
+'''Courses'''
 @teacher.route('/courses', methods=['GET'])
 def courses():
     teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     return render_template('teacher/courses.html', courses=courses)
 
-@teacher.route('/courses/<int:course_id>/lessons', methods=['GET'])
-def lessons(course_id):
-    teacher_id = current_user.id
-    return f"Lessons for course ID: {course_id}"
-
 @teacher.route('/courses/<int:course_id>')
 def course_details(course_id):
     teacher_id = current_user.id
     course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first_or_404()
     return f"Details for course: {course.name}"
-
-@teacher.route('/courses/<int:course_id>/students', methods=['GET'])
-def view_students(course_id):
-    teacher_id = current_user.id
-    course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first()
-    if not course:
-        flash('Course not found!', category='error')
-        return redirect(url_for('teacher.courses'))
-    students = course.students
-    return render_template('teacher/view_students.html', course=course, students=students)
-
-
-@teacher.route('/courses/<int:course_id>/feedback', methods=['GET'])
-def analyze_feedback(course_id):
-    teacher_id = current_user.id  # Заглушка для текущего учителя
-    course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first()
-    if not course:
-        flash('Course not found!', category='error')
-        return redirect(url_for('teacher.courses'))
-
-    feedback = course.feedback  # Получение всех фидбеков курса
-    feedback_summary = {
-        "average_rating": round(sum(f.mark for f in feedback) / len(feedback), 2) if feedback else 0,
-        "total_comments": len([f.comment for f in feedback if f.comment]),
-        "positive_comments": len([f for f in feedback if f.mark >= 4]),
-        "negative_comments": len([f for f in feedback if f.mark < 4]),
-    }
-
-    return render_template('teacher/analyze_feedback.html', course=course, feedback_summary=feedback_summary)
 
 @teacher.route('/courses/add', methods=['GET', 'POST'])
 def add_course():
@@ -211,6 +91,103 @@ def delete_course(course_id):
     flash('Course deleted successfully!', category='success')
     return redirect(url_for('teacher.courses'))
 
+'''Lessons'''
+@teacher.route('/courses/<int:course_id>/lessons', methods=['GET'])
+def lessons(course_id):
+    teacher_id = current_user.id
+    return f"Lessons for course ID: {course_id}"
+
+@teacher.route('/add_lesson', methods=['GET', 'POST'])
+@login_required
+def add_lesson():
+    if request.method == 'POST':
+        # Получаем данные из формы
+        lesson_title = request.form.get('topic')
+        lesson_date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()  # Преобразуем строку в дату
+        start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()  # Время начала
+        end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time() if request.form.get('end_time') else None  # Время окончания (если есть)
+        location = request.form.get('location')
+        course_id = request.form.get('course_id')
+
+        # Создаем новый объект Lesson
+        new_lesson = Lesson(
+            course_id=course_id,
+            date=lesson_date,
+            topic=lesson_title,
+            start_time=start_time,
+            end_time=end_time,
+            location=location
+        )
+
+        # Добавляем в базу данных
+        db.session.add(new_lesson)
+        db.session.commit()
+
+        # Перенаправляем обратно на страницу курса или на страницу с уроками
+        return redirect(url_for('teacher.dashboard'))
+
+    # Для GET-запроса, выводим форму
+    courses = Course.query.all()  # Получаем список всех курсов из базы данных
+    return render_template('teacher/add_lesson.html', courses=courses)
+
+@teacher.route('/courses/<int:course_id>/students', methods=['GET'])
+def view_students(course_id):
+    teacher_id = current_user.id
+    course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first()
+    if not course:
+        flash('Course not found!', category='error')
+        return redirect(url_for('teacher.courses'))
+    students = course.students
+    return render_template('teacher/view_students.html', course=course, students=students)
+
+@teacher.route('/courses/<int:course_id>/feedback', methods=['GET'])
+def analyze_feedback(course_id):
+    teacher_id = current_user.id  # Заглушка для текущего учителя
+    course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first()
+    if not course:
+        flash('Course not found!', category='error')
+        return redirect(url_for('teacher.courses'))
+
+    feedback = course.feedback  # Получение всех фидбеков курса
+    feedback_summary = {
+        "average_rating": round(sum(f.mark for f in feedback) / len(feedback), 2) if feedback else 0,
+        "total_comments": len([f.comment for f in feedback if f.comment]),
+        "positive_comments": len([f for f in feedback if f.mark >= 4]),
+        "negative_comments": len([f for f in feedback if f.mark < 4]),
+    }
+
+    return render_template('teacher/analyze_feedback.html', course=course, feedback_summary=feedback_summary)
+
+'''Attendance'''
+@teacher.route('/attendance', methods=['GET', 'POST'])
+def attendance():
+    from app.models import User, Attendance, Lesson, Course
+    teacher_id = current_user.id
+    records = db.session.query(Attendance).join(Lesson).join(Course).join(User).all()
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+
+    # Получение фильтров из запроса
+    course_filter = request.args.getlist('course')  # Список курсов
+    date_filter = request.args.getlist('date')  # Список дат
+    status_filter = request.args.getlist('status')  # Статус (присутствие/отсутствие)
+
+    # Формирование запроса для уроков с учетом фильтров
+    query = Lesson.query.filter(Lesson.course_id.in_([course.id for course in courses]))
+
+    if course_filter:
+        query = query.filter(Lesson.course_id.in_(course_filter))
+    if date_filter:
+        query = query.filter(Lesson.date.in_(date_filter))
+
+    # Добавление фильтра по статусу
+    if status_filter:
+        query = query.join(Attendance).filter(Attendance.status.in_(status_filter))
+
+    lessons = query.all()
+
+    # Возврат в шаблон с фильтрами и уроками
+    return render_template('teacher/attendance.html', courses=courses, lessons=lessons,
+                           course_filter=course_filter, date_filter=date_filter, status_filter=status_filter)
 
 @teacher.route('/attendance/<int:lesson_id>', methods=['GET', 'POST'])
 def manage_attendance(lesson_id):
@@ -245,6 +222,98 @@ def manage_attendance(lesson_id):
     return render_template('teacher/manage_attendance.html', lesson=lesson, course=course,
                            attendance_records=attendance_records)
 
+'''Feedback'''
+@teacher.route('/feedback', methods=['GET'])
+def feedback():
+    teacher_id = current_user.id
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+    feedback_records = []
+
+    # Получаем отзывы для каждого курса и урока
+    for course in courses:
+        lessons = Lesson.query.filter_by(course_id=course.id).all()
+        for lesson in lessons:
+            feedback_records.extend(Feedback.query.filter_by(lesson_id=lesson.id).all())
+
+    # Фильтрация и сортировка
+    sort_by = request.args.get('sort_by', 'date')  # По умолчанию сортируем по дате
+    sort_order = request.args.get('sort_order', 'asc')  # По умолчанию по возрастанию
+
+    if sort_by == 'mark':
+        feedback_records = sorted(feedback_records, key=lambda f: f.mark, reverse=(sort_order == 'desc'))
+    elif sort_by == 'date':
+        feedback_records = sorted(feedback_records, key=lambda f: f.exact_time, reverse=(sort_order == 'desc'))
+
+    # Добавляем среднюю оценку и описание качества курса
+    for course in courses:
+        course.avg_rating = course.average_rating  # Средняя оценка
+        course.quality = course.course_quality  # Качество курса
+
+    return render_template('teacher/feedback.html', courses=courses, feedback_records=feedback_records)
+
+@teacher.route('/feedback/response/<int:feedback_id>', methods=['POST'])
+def reply_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    response = request.form['response']
+    feedback.response_on_feedback = response  # Ответ преподавателя
+
+    db.session.commit()
+
+    flash('Response added successfully!', 'success')
+    return redirect(url_for('teacher.feedback'))
+
+@teacher.route('/feedback/hide/<int:feedback_id>', methods=['POST'])
+def hide_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    feedback.is_hidden = True  # Скрываем фидбек (нужно добавить поле в модели)
+
+    db.session.commit()
+
+    flash('Feedback hidden successfully!', 'success')
+    return redirect(url_for('teacher.feedback'))
+
+@teacher.route('/feedback/unhide/<int:feedback_id>', methods=['POST'])
+
+def unhide_feedback(feedback_id):
+    feedback = Feedback.query.get_or_404(feedback_id)
+    feedback.is_hidden = False  # Восстанавливаем фидбек
+
+    db.session.commit()
+
+    flash('Feedback restored successfully!', 'success')
+    return redirect(url_for('teacher.feedback'))
+
+@teacher.route('/feedback/<int:lesson_id>', methods=['GET', 'POST'])
+def submit_feedback(lesson_id):
+    lesson = Lesson.query.get_or_404(lesson_id)
+    feedbacks = Feedback.query.filter_by(lesson_id=lesson_id).all()
+    if request.method == 'POST':
+        # Получаем данные формы
+        mark = request.form['mark']
+        comment = request.form['comment']
+        anonymous = 'anonymous' in request.form
+        feedback_type = request.form['type']
+        student_id = request.form['student_id']  # Здесь получаем ID студента из формы
+
+        # Создаем новый объект Feedback
+        feedback = Feedback(
+            lesson_id=lesson.id,
+            student_id=student_id,  # Используем переданный ID студента
+            mark=mark,
+            comment=comment,
+            anonymous=anonymous,
+            type=feedback_type
+        )
+
+        db.session.add(feedback)
+        db.session.commit()
+
+        flash('Feedback submitted successfully!', 'success')
+        return redirect(url_for('teacher.feedback', lesson_id=lesson.id))
+
+    return render_template('teacher/manage_feedback.html', lesson=lesson)
+
+'''Export'''
 @teacher.route('/export/csv', methods=['GET'])
 def export_csv():
     teacher_id = current_user.id
@@ -360,3 +429,5 @@ def export():
         courses = Course.query.filter_by(tutor_id=teacher_id).all()
 
         return render_template('teacher/export.html', courses=courses)
+
+

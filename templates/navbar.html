@@ -1,0 +1,21 @@
+<!-- navbar.html -->
+<div class="navbar">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="logo">
+
+    <div class="nav-links">
+        <a href="{{ url_for('teacher.courses') }}">Courses</a>
+        <a href="{{ url_for('teacher.attendance') }}">Attendance</a>
+        <a href="{{ url_for('teacher.feedback') }}">Feedback</a>
+        <a href="{{ url_for('teacher.export') }}">Export</a>
+    </div>
+
+    <div class="user-profile">
+        <a href="{{ url_for('teacher.notifications') }}" class="notification-btn">🔔</a>
+    </div>
+    <!-- Контейнер для закрепленной ссылки -->
+    <div class="profile-btn-container">
+        <!-- Сама ссылка -->
+        <a href="{{ url_for('teacher.profile') }}" class="profile-btn">👤</a>
+    </div>
+
+</div>

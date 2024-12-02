@@ -1,0 +1,90 @@
+/* Общие стили для navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #333;
+    padding: 10px 20px;
+    color: white;
+}
+
+.navbar .logo {
+    width: 50px;
+    height: auto;
+}
+
+.navbar .nav-links a {
+    color: white;
+    margin: 0 15px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.navbar .nav-links a:hover {
+    text-decoration: underline;
+}
+
+.navbar .user-profile {
+    display: flex;
+    align-items: center;
+}
+
+.navbar .user-profile .notification-btn,
+.navbar .user-profile .profile-btn {
+    color: white;
+    font-size: 24px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+.navbar .user-profile .notification-btn:hover,
+.navbar .user-profile .profile-btn:hover {
+    color: #f0f0f0;
+}
+/* Это для того, чтобы ссылка занимала всю ширину */
+a.profile-btn {
+    display: block;  /* Делает ссылку блочным элементом */
+    width: 100%;  /* Заставляет ссылку занимать всю ширину контейнера */
+    text-align: center;  /* Центрирует текст внутри ссылки */
+    padding: 10px 0;  /* Добавляет вертикальные отступы для удобства */
+    background-color: #f8f8f8;  /* Устанавливает цвет фона (по желанию) */
+    text-decoration: none;  /* Убирает подчеркивание у ссылки */
+    color: #000;  /* Цвет текста */
+}
+
+/* Контейнер, который удерживает ссылку вверху страницы */
+.profile-btn-container {
+    width: 100%;  /* Ширина 100% */
+    position: fixed;  /* Закрепляем элемент в верхней части экрана */
+    top: 0;  /* Отступ от верхнего края */
+    left: 0;  /* Отступ от левого края */
+    background-color: #f8f8f8;  /* Цвет фона */
+    z-index: 1000;  /* При необходимости, ставим сверху всех остальных элементов */
+}
+.add-buttons {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.add-buttons .btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.add-buttons {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.add-buttons .btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    text-align: center;
+}

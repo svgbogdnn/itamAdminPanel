@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Notifications</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <!-- Ссылка на уведомления -->
+    <a href="{{ url_for('teacher.notifications') }}">Go to Notifications</a>
+
+    <h1>Notifications</h1>
+    <!-- Здесь выводи список уведомлений -->
+    <ul>
+        <li>New Course Added: Python Basics</li>
+        <li>Feedback received for Course XYZ</li>
+    </ul>
+</body>
+</html>

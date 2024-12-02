@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>My Courses</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    {% include 'navbar.html' %}
     <h1>My Courses</h1>
     <!-- Button to add a new course -->
     <a href="{{ url_for('teacher.add_course') }}" style="margin-bottom: 10px; display: inline-block;">Add Course</a>

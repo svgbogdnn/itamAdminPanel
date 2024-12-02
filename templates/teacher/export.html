@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    {% include 'navbar.html' %}
     {% block content %}
     <div class="container">
         <h2>Export Data</h2>

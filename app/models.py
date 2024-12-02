@@ -146,7 +146,7 @@ class Lesson(db.Model):
     end_time = db.Column(db.Time)
     location = db.Column(db.String(255))
     # Уникальный backref для attendance_records
-    attendance_records = db.relationship('Attendance', backref='lesson_record', lazy=True)
+    attendance_records = db.relationship('Attendance', backref='lesson_record', lazy=True, overlaps="attendances_list")
 
 # Таблица посещаемости
 class Attendance(db.Model):
@@ -159,8 +159,8 @@ class Attendance(db.Model):
     comments = db.Column(db.Text)
     reason_of_excuse = db.Column(db.Text)
     student = db.relationship('User', backref='attendance_records')
-    # Используем 'attendances' или другое уникальное имя
-    lesson = db.relationship('Lesson', backref='attendances_list')  # Уникальный backref
+    lesson = db.relationship('Lesson', backref='attendances_list', overlaps="attendance_records")  # Указываем overlaps
+    course = db.relationship('Course', secondary='lessons', viewonly=True)
 
 # Таблица отзывов
 class Feedback(db.Model):

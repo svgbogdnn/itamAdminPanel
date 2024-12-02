@@ -3,31 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <title>Attendance Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        .filter {
+            cursor: pointer;
+            padding: 5px;
+            background: #f0f0f0;
+            margin: 5px;
+            width: 120px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .filter-content {
+            display: none;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        .filter.active .filter-content {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f0f0f0;
+        }
+    </style>
 </head>
 <body>
+    {% include 'navbar.html' %}
     <h1>Attendance Management</h1>
+
+    <!-- Форма фильтрации -->
+    <div class="filters">
+        <div class="filter" onclick="toggleFilter('course-filter')">
+            Курс
+            <div class="course-filter filter-content">
+                <select name="course" multiple>
+                    {% for course in courses %}
+                        <option value="{{ course.id }}" {% if course.id in request.args.getlist('course') %}selected{% endif %}>{{ course.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="filter" onclick="toggleFilter('date-filter')">
+            Дата
+            <div class="date-filter filter-content">
+                <select name="date" multiple>
+                    {% for lesson in lessons %}
+                        <option value="{{ lesson.date }}" {% if lesson.date in request.args.getlist('date') %}selected{% endif %}>{{ lesson.date }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="filter" onclick="toggleFilter('status-filter')">
+            Статус
+            <div class="status-filter filter-content">
+                <select name="status" multiple>
+                    <option value="present" {% if 'present' in request.args.getlist('status') %}selected{% endif %}>Present</option>
+                    <option value="absent" {% if 'absent' in request.args.getlist('status') %}selected{% endif %}>Absent</option>
+                    <option value="late" {% if 'late' in request.args.getlist('status') %}selected{% endif %}>Late</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit">Apply Filters</button>
+    <a href="{{ url_for('teacher.attendance') }}">Reset Filters</a>
+
+    <!-- Таблица -->
     <table border="1">
         <thead>
             <tr>
-                <th>Course Name</th>
-                <th>Actions</th>
+                <th>Student Name</th>
+                <th>Course</th>
+                <th>Date</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody>
-            {% for course in courses %}
-            <tr>
-                <td>{{ course.name }}</td>
-                <td>
-                    {% for lesson in lessons %}
-                        {% if lesson.course_id == course.id %}
-                        <a href="{{ url_for('teacher.manage_attendance', lesson_id=lesson.id) }}">Manage Attendance for {{ lesson.date }}</a><br>
-                        {% endif %}
-                    {% endfor %}
-                </td>
-            </tr>
-
+            {% for record in attendance_records %}
+                <tr>
+                    <td>{{ record.student.full_name }}</td>
+                    <td>{{ record.lesson.course_name }}</td>
+                    <td>{{ record.lesson_date }}</td>
+                    <td>{{ record.status }}</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <script>
+        function toggleFilter(filterId) {
+            const filterElement = document.getElementById(filterId);
+            filterElement.classList.toggle('active');
+        }
+    </script>
 </body>
 </html>
