@@ -105,6 +105,32 @@ class Course(db.Model):
         else:
             return "Needs Improvement"
 
+# Таблица занятий
+class Lesson(db.Model):
+    __tablename__ = 'lessons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"))
+    date = db.Column(db.Date, nullable=False)
+    topic = db.Column(db.String(255), nullable=False)
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time)
+    location = db.Column(db.String(255))
+    # attendance_records = db.relationship('Attendance', backref='lesson_record', lazy=True, overlaps="attendances_list")
+
+# Таблица посещаемости
+class Attendance(db.Model):
+    __tablename__ = 'attendance'
+
+    id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id', ondelete="CASCADE"))
+    student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"))
+    status = db.Column(db.String(50), nullable=False)  # was/not
+    comments = db.Column(db.Text)
+    reason_of_excuse = db.Column(db.Text)
+    student = db.relationship('User', backref='attendance_records')
+    lesson = db.relationship('Lesson', backref='attendances_list', overlaps="attendance_records")  # Указываем overlaps
+    course = db.relationship('Course', secondary='lessons', viewonly=True)
 
 # Таблица студентов
 class Student(db.Model):
@@ -133,34 +159,6 @@ course_student_association = db.Table(
         db.Column('course_id', db.Integer, db.ForeignKey('courses.id'), primary_key=True),
         db.Column('student_id', db.Integer, db.ForeignKey('students.id'), primary_key=True),
     )
-
-# Таблица занятий
-class Lesson(db.Model):
-    __tablename__ = 'lessons'
-
-    id = db.Column(db.Integer, primary_key=True)
-    course_id = db.Column(db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"))
-    date = db.Column(db.Date, nullable=False)
-    topic = db.Column(db.String(255), nullable=False)
-    start_time = db.Column(db.Time, nullable=False)
-    end_time = db.Column(db.Time)
-    location = db.Column(db.String(255))
-    # Уникальный backref для attendance_records
-    attendance_records = db.relationship('Attendance', backref='lesson_record', lazy=True, overlaps="attendances_list")
-
-# Таблица посещаемости
-class Attendance(db.Model):
-    __tablename__ = 'attendance'
-
-    id = db.Column(db.Integer, primary_key=True)
-    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id', ondelete="CASCADE"))
-    student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"))
-    status = db.Column(db.String(50), nullable=False)  # was/not
-    comments = db.Column(db.Text)
-    reason_of_excuse = db.Column(db.Text)
-    student = db.relationship('User', backref='attendance_records')
-    lesson = db.relationship('Lesson', backref='attendances_list', overlaps="attendance_records")  # Указываем overlaps
-    course = db.relationship('Course', secondary='lessons', viewonly=True)
 
 # Таблица отзывов
 class Feedback(db.Model):

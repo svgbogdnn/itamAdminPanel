@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <h1>User Profile</h1>
+
+    <div class="profile-details">
+        <img src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.jpg') }}" alt="Profile Picture" class="profile-picture">
+        <p><strong>Name:</strong> {{ user.full_name }}</p>
+        <p><strong>Nickname:</strong> {{ user.nickname }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Role:</strong> {{ user.role }}</p>
+        <p><strong>University:</strong> {{ user.university }}</p>
+        <p><strong>Course Number:</strong> {{ user.num_of_course }}</p>
+        <p><strong>Institute:</strong> {{ user.institute }}</p>
+        <p><strong>Group:</strong> {{ user.group }}</p>
+        <p><strong>Date of Birth:</strong> {{ user.date_of_birth.strftime('%Y-%m-%d') }}</p>
+        <p><strong>Status:</strong> {{ user.status }}</p>
+        <p><strong>Last Login:</strong> {{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never logged in' }}</p>
+        <p><strong>Phone Number:</strong> {{ user.phone_number or 'N/A' }}</p>
+        <p><strong>Account Created:</strong> {{ user.registration_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        <p><strong>Policy Accepted:</strong> {{ 'Yes' if user.accept_policy else 'No' }}</p>
+
+        <a href="{{ url_for('teacher.profile') }}">Edit Profile</a>
+    </div>
+</body>
+</html>

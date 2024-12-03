@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
     <style>
+        /* Стиль для фильтров */
         .filter {
             cursor: pointer;
             padding: 5px;
@@ -48,43 +49,55 @@
     <h1>Attendance Management</h1>
 
     <!-- Форма фильтрации -->
-    <div class="filters">
-        <div class="filter" onclick="toggleFilter('course-filter')">
-            Курс
-            <div class="course-filter filter-content">
-                <select name="course" multiple>
-                    {% for course in courses %}
-                        <option value="{{ course.id }}" {% if course.id in request.args.getlist('course') %}selected{% endif %}>{{ course.name }}</option>
-                    {% endfor %}
-                </select>
+    <form method="GET" action="{{ url_for('teacher.attendance') }}">
+        <div class="filters">
+            <!-- Фильтр по курсу -->
+            <div class="filter">
+                Курс
+                <div class="course-filter">
+                    <select name="course" id="course-filter" onchange="updateLessons()">
+                        <option value="">Select a course</option>
+                        {% for course in courses %}
+                            <option value="{{ course.id }}" {% if course.id in course_filter %}selected{% endif %}>
+                                {{ course.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Фильтр по дате (будет обновляться через JS) -->
+            <div class="filter">
+                Дата
+                <div class="date-filter">
+                    <select name="date" id="date-filter">
+                        <option value="">Select a date</option>
+                        {% if lessons %}
+                            {% for lesson in lessons %}
+                                <option value="{{ lesson.date }}" {% if lesson.date in date_filter %}selected{% endif %}>
+                                    {{ lesson.date }}
+                                </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Фильтр по статусу -->
+            <div class="filter">
+                Статус
+                <div class="status-filter">
+                    <select name="status" id="status-filter" multiple>
+                        <option value="was" {% if 'was' in status_filter %}selected{% endif %}>Was</option>
+                        <option value="not" {% if 'not' in status_filter %}selected{% endif %}>Not</option>
+                    </select>
+                </div>
             </div>
         </div>
 
-        <div class="filter" onclick="toggleFilter('date-filter')">
-            Дата
-            <div class="date-filter filter-content">
-                <select name="date" multiple>
-                    {% for lesson in lessons %}
-                        <option value="{{ lesson.date }}" {% if lesson.date in request.args.getlist('date') %}selected{% endif %}>{{ lesson.date }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-
-        <div class="filter" onclick="toggleFilter('status-filter')">
-            Статус
-            <div class="status-filter filter-content">
-                <select name="status" multiple>
-                    <option value="present" {% if 'present' in request.args.getlist('status') %}selected{% endif %}>Present</option>
-                    <option value="absent" {% if 'absent' in request.args.getlist('status') %}selected{% endif %}>Absent</option>
-                    <option value="late" {% if 'late' in request.args.getlist('status') %}selected{% endif %}>Late</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <button type="submit">Apply Filters</button>
-    <a href="{{ url_for('teacher.attendance') }}">Reset Filters</a>
+        <button type="submit">Apply Filters</button>
+        <a href="{{ url_for('teacher.attendance') }}">Reset Filters</a>
+    </form>
 
     <!-- Таблица -->
     <table border="1">
@@ -100,8 +113,8 @@
             {% for record in attendance_records %}
                 <tr>
                     <td>{{ record.student.full_name }}</td>
-                    <td>{{ record.lesson.course_name }}</td>
-                    <td>{{ record.lesson_date }}</td>
+                    <td>{{ record.lesson.course.name }}</td>
+                    <td>{{ record.lesson.date }}</td>
                     <td>{{ record.status }}</td>
                 </tr>
             {% endfor %}
@@ -109,10 +122,29 @@
     </table>
 
     <script>
-        function toggleFilter(filterId) {
-            const filterElement = document.getElementById(filterId);
-            filterElement.classList.toggle('active');
+        // Функция для обновления списка дат в зависимости от выбранного курса
+        function updateLessons() {
+            const courseId = document.getElementById('course-filter').value;
+            const dateSelect = document.getElementById('date-filter');
+
+            // Очищаем текущий список дат
+            dateSelect.innerHTML = "<option value=''>Select a date</option>";
+
+            // Загружаем уроки для выбранного курса
+            if (courseId) {
+                fetch(`/get_lessons_for_course/${courseId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.lessons.forEach(lesson => {
+                            const option = document.createElement("option");
+                            option.value = lesson.date;
+                            option.text = lesson.date;
+                            dateSelect.appendChild(option);
+                        });
+                    });
+            }
         }
+
     </script>
 </body>
 </html>

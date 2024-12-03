@@ -1,7 +1,7 @@
-from flask import render_template, request, redirect, url_for, flash, Blueprint, Response
+from flask import render_template, request, redirect, url_for, flash, Blueprint, Response, jsonify
 from app.models import Course
 from app import db
-from app.models import Lesson, Attendance, Feedback, Course
+from app.models import Lesson, Attendance, Feedback, Course, Lesson
 from datetime import datetime
 #for export
 import csv
@@ -24,8 +24,11 @@ def notifications():
     return render_template('teacher/notifications.html')
 
 @teacher.route('/teacher/profile')
+@login_required
 def profile():
-    return render_template('teacher/profile.html')
+    from app.models import User
+    user = User.query.filter_by(id=current_user.id).first()
+    return render_template('teacher/profile.html', user=user)
 
 '''Courses'''
 @teacher.route('/courses', methods=['GET'])
@@ -159,68 +162,108 @@ def analyze_feedback(course_id):
     return render_template('teacher/analyze_feedback.html', course=course, feedback_summary=feedback_summary)
 
 '''Attendance'''
-@teacher.route('/attendance', methods=['GET', 'POST'])
+# @teacher.route('/attendance', methods=['GET', 'POST'])
+# @login_required
+# def attendance():
+#     from app.models import User
+#     teacher_id = current_user.id
+#     # Получение всех курсов, связанных с учителем
+#     courses = Course.query.filter_by(tutor_id=teacher_id).all()
+#
+#     # Получение всех уроков, связанных с курсами этого учителя
+#     records = db.session.query(Attendance).join(Lesson).join(Course).join(User).all()
+#
+#     # Получение фильтров из запроса
+#     course_filter = request.args.getlist('course')  # Список курсов
+#     date_filter = request.args.getlist('date')  # Список дат
+#     status_filter = request.args.getlist('status')  # Статус (присутствие/отсутствие)
+#
+#     query = Lesson.query
+#
+#     if course_filter:
+#         query = query.join(Course).filter(Course.id.in_(course_filter))
+#
+#     if date_filter:
+#         query = query.filter(Lesson.date.in_(date_filter))
+#
+#     if status_filter:
+#         query = query.join(Attendance).filter(Attendance.status.in_(status_filter))
+#
+#     lessons = query.all()
+#
+#     # Возврат в шаблон с фильтрами и уроками
+#     return render_template('teacher/attendance.html', courses=courses, lessons=lessons,
+#                            course_filter=course_filter, date_filter=date_filter, status_filter=status_filter)
+#
+# @teacher.route('/attendance/<int:lesson_id>', methods=['GET', 'POST'])
+# @login_required
+# def manage_attendance(lesson_id):
+#     from app.models import User
+#     # Получаем урок
+#     lesson = Lesson.query.get(lesson_id)
+#     if not lesson:
+#         flash('Lesson not found!', category='error')
+#         return redirect(url_for('teacher.attendance'))
+#
+#     # Получаем курс, связанный с уроком
+#     course = Course.query.get(lesson.course_id)
+#     if not course:
+#         flash('Course not found!', category='error')
+#         return redirect(url_for('teacher.attendance'))
+#
+#     # Получаем студентов и их посещаемость
+#     attendance_records = Attendance.query.filter_by(lesson_id=lesson_id).all()
+#
+#     if request.method == 'POST':
+#         # Обработка изменения статуса студентов
+#         for record in attendance_records:
+#             status = request.form.get(f'status_{record.id}')
+#             comment = request.form.get(f'comment_{record.id}')
+#             reason = request.form.get(f'reason_{record.id}')
+#             record.status = status
+#             record.comments = comment
+#             record.reason_of_excuse = reason
+#         db.session.commit()
+#         flash('Attendance updated successfully!', category='success')
+#         return redirect(url_for('teacher.manage_attendance', lesson_id=lesson_id))
+#
+#     return render_template('teacher/manage_attendance.html', lesson=lesson, course=course,
+#                            attendance_records=attendance_records)
+
+@teacher.route('/attendance', methods=['GET'])
 def attendance():
-    from app.models import User, Attendance, Lesson, Course
-    teacher_id = current_user.id
-    records = db.session.query(Attendance).join(Lesson).join(Course).join(User).all()
-    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+    # Получаем все курсы и уроки для фильтрации
+    courses = Course.query.all()
+    lessons = Lesson.query.all()
 
-    # Получение фильтров из запроса
-    course_filter = request.args.getlist('course')  # Список курсов
-    date_filter = request.args.getlist('date')  # Список дат
-    status_filter = request.args.getlist('status')  # Статус (присутствие/отсутствие)
+    # Чтение параметров фильтра из запроса
+    course_filter = request.args.getlist('course')
+    date_filter = request.args.getlist('date')
+    status_filter = request.args.getlist('status')
 
-    # Формирование запроса для уроков с учетом фильтров
-    query = Lesson.query.filter(Lesson.course_id.in_([course.id for course in courses]))
+    # Начинаем базовый запрос для посещаемости
+    query = Attendance.query
 
-    if course_filter:
-        query = query.filter(Lesson.course_id.in_(course_filter))
-    if date_filter:
-        query = query.filter(Lesson.date.in_(date_filter))
+    if course_filter and course_filter != ['']:
+        query = query.join(Lesson).filter(Lesson.course_id.in_(course_filter))
+    if date_filter and date_filter != ['']:
+        query = query.filter(Attendance.lesson.has(Lesson.date.in_(date_filter)))
+    if status_filter and status_filter != ['']:
+        query = query.filter(Attendance.status.in_(status_filter))
 
-    # Добавление фильтра по статусу
-    if status_filter:
-        query = query.join(Attendance).filter(Attendance.status.in_(status_filter))
+    # Получаем записи посещаемости
+    attendance_records = query.all()
 
-    lessons = query.all()
-
-    # Возврат в шаблон с фильтрами и уроками
-    return render_template('teacher/attendance.html', courses=courses, lessons=lessons,
+    return render_template('teacher/attendance.html', courses=courses, lessons=lessons, attendance_records=attendance_records,
                            course_filter=course_filter, date_filter=date_filter, status_filter=status_filter)
 
-@teacher.route('/attendance/<int:lesson_id>', methods=['GET', 'POST'])
-def manage_attendance(lesson_id):
-    # Получаем урок
-    lesson = Lesson.query.get(lesson_id)
-    if not lesson:
-        flash('Lesson not found!', category='error')
-        return redirect(url_for('teacher.attendance'))
+@teacher.route('/get_lessons_for_course/<int:course_id>', methods=['GET'])
+def get_lessons_for_course(course_id):
+    lessons = Lesson.query.filter_by(course_id=course_id).all()
+    print(f"Lessons for course {course_id}: {lessons}")  # Добавьте для отладки
+    lessons_data = [{"date": lesson.date} for lesson in lessons]
+    return jsonify({"lessons": lessons_data})
 
-    # Получаем курс, связанный с уроком
-    course = Course.query.get(lesson.course_id)
-    if not course:
-        flash('Course not found!', category='error')
-        return redirect(url_for('teacher.attendance'))
-
-    # Получаем студентов и их посещаемость
-    attendance_records = Attendance.query.filter_by(lesson_id=lesson_id).all()
-
-    if request.method == 'POST':
-        # Обработка изменения статуса студентов
-        for record in attendance_records:
-            status = request.form.get(f'status_{record.id}')
-            comment = request.form.get(f'comment_{record.id}')
-            reason = request.form.get(f'reason_{record.id}')
-            record.status = status
-            record.comments = comment
-            record.reason_of_excuse = reason
-        db.session.commit()
-        flash('Attendance updated successfully!', category='success')
-        return redirect(url_for('teacher.manage_attendance', lesson_id=lesson_id))
-
-    return render_template('teacher/manage_attendance.html', lesson=lesson, course=course,
-                           attendance_records=attendance_records)
 
 '''Feedback'''
 @teacher.route('/feedback', methods=['GET'])
