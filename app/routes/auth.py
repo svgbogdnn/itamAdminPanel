@@ -12,12 +12,12 @@ from app.utils.validators import (
 )
 from flask_login import login_user, login_required, logout_user, current_user
 
+
 auth = Blueprint('auth', __name__, template_folder='templates')
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    from app.models import User  # импорт внутри функции для избежания круговой зависимости
-
+    from app.models import User
     if current_user.is_authenticated:
         return redirect(url_for('teacher.dashboard'))
 
@@ -49,39 +49,16 @@ def register():
     if request.method == 'POST':
         # Собираем данные из формы
         full_name = request.form.get('full_name')
-        university = request.form.get('university')
-        num_of_course = request.form.get('num_of_course')
-        institute = request.form.get('institute')
-        group = request.form.get('group')
         role = request.form.get('role')
         email = request.form.get('email')
         nickname = request.form.get('nickname')
+        phone_number = request.form.get('phone_number')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
-        phone_number = request.form.get('phone_number')
-        date_of_birth = request.form.get('date_of_birth')
         accept_policy = request.form.get('accept_policy')
 
-        # validation
-        validations = [
-            validate_full_name(full_name),
-            validate_email(email),
-            validate_nickname(nickname),
-            validate_passwords(password, confirm_password),
-            validate_phone_number(phone_number),
-            validate_date_of_birth(date_of_birth),
-            validate_accept_policy(accept_policy),
-        ]
-
-        for is_valid, error_message in validations:
-            if not is_valid:
-                flash(error_message, category='error')
-                return redirect(url_for('auth.register'))
-
         # Проверка обязательных полей
-        if not all([full_name, university, num_of_course, institute, group,
-                    role, email, nickname, password, confirm_password, phone_number,
-                    date_of_birth]):
+        if not all([full_name, role, email, nickname, phone_number, password, confirm_password]):
             flash('All fields are required!', category='error')
             return redirect(url_for('auth.register'))
 
@@ -104,16 +81,17 @@ def register():
         # Создание нового пользователя
         new_user = User(
             full_name=full_name,
-            university=university,
-            num_of_course=num_of_course,
-            institute=institute,
-            group=group,
             role=role,
             email=email,
             nickname=nickname,
             password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
             phone_number=phone_number,
-            date_of_birth=date_of_birth,
+            # Остальные поля заполняются значением None
+            university=None,
+            num_of_course=None,
+            institute=None,
+            group=None,
+            date_of_birth=None,
             accept_policy=True if accept_policy == 'on' else False,
         )
         db.session.add(new_user)

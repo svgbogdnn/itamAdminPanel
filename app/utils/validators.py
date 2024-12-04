@@ -15,9 +15,9 @@ def validate_email(email):
     return True, ""
 
 def validate_nickname(nickname):
-    """Проверяет, что никнейм состоит из менее чем 15 символов."""
-    if len(nickname) > 15:
-        return False, "Nickname must be less than 15 characters."
+    """Проверяет, что никнейм состоит из менее чем 50 символов."""
+    if len(nickname) > 50:
+        return False, "Nickname must be less than 50 characters."
     return True, ""
 
 def validate_passwords(password, confirm_password):

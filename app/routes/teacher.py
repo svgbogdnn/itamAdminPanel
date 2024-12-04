@@ -2,7 +2,8 @@ from flask import render_template, request, redirect, url_for, flash, Blueprint,
 from app.models import Course
 from app import db
 from app.models import Lesson, Attendance, Feedback, Course, Lesson
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy.sql import func
 #for export
 import csv
 from io import StringIO
@@ -11,13 +12,50 @@ from io import BytesIO
 from flask import send_file
 from flask_login import current_user, login_required
 #maintain my man
+
 teacher = Blueprint('teacher', __name__, template_folder='templates')
 
 '''Overall settings'''
-@teacher.route('/dashboard')
+@teacher.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
-    return render_template('dashboard.html')
+    from app.models import User
+    from app.models import course_student
+    total_users = User.query.count() #всего пользователей
+    total_students = User.query.filter_by(role='student').count() #всего студентов
+    total_teachers = User.query.filter_by(role='teacher').count() #всего учителей
+    active_users = User.query.filter(User.last_login >= datetime.now() - timedelta(days=1)).count() #активные юзеры за последние 24 часа
+    active_courses = Course.query.filter_by(status='active').count() #активные курсы колво
+
+    #самый популярный курс
+    popular_course_query = db.session.query(
+        Course,
+        db.func.count(course_student.c.student_id).label('student_count')
+    ).join(course_student, Course.id == course_student.c.course_id).group_by(Course.id).order_by(
+        db.func.count(course_student.c.student_id).desc()
+    ).first()
+    popular_course = popular_course_query[0].name if popular_course_query else "No courses yet"
+
+    avg_lesson_rating = Feedback.query.with_entities(func.avg(Feedback.mark)).scalar() #средняя оценка по фидбекам
+
+    return render_template(
+        'dashboard.html',
+        total_users=total_users,
+        total_students=total_students,
+        total_teachers=total_teachers,
+        active_users=active_users,
+        active_courses=active_courses,
+        popular_course=popular_course,
+        avg_lesson_rating=round(avg_lesson_rating, 2) if avg_lesson_rating else "N/A"
+    )
+
+@teacher.route('/help', methods=['GET'])
+def help_page():
+    return render_template('help.html')
+
+@teacher.route('/tips', methods=['GET'])
+def tips_page():
+    return render_template('tips.html')
 
 @teacher.route('/notifications')
 def notifications():

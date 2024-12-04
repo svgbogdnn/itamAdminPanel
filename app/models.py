@@ -154,11 +154,11 @@ class Student(db.Model):
     )
 
 # for temporary
-course_student_association = db.Table(
-        'course_student',
-        db.Column('course_id', db.Integer, db.ForeignKey('courses.id'), primary_key=True),
-        db.Column('student_id', db.Integer, db.ForeignKey('students.id'), primary_key=True),
-    )
+course_student = db.Table(
+    'course_student',
+    db.Column('course_id', db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('student_id', db.Integer, db.ForeignKey('students.id', ondelete="CASCADE"), primary_key=True)
+)
 
 # Таблица отзывов
 class Feedback(db.Model):

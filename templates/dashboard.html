@@ -50,11 +50,30 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .stats {
-            margin: 20px 0;
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin: 20px;
+        }
+        .stats-card {
+            width: 250px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             text-align: center;
-            font-size: 16px;
-            color: #333;
+        }
+        .stats-card h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .stats-card p {
+            margin: 5px 0 0;
+            font-size: 24px;
+            font-weight: bold;
         }
         .main-menu {
             display: flex;
@@ -89,6 +108,12 @@
         </div>
         <button class="profile-button">Profile</button>
     </div>
+    <div class="main-menu">
+        <a href="/teacher/courses">Courses</a>
+        <a href="/teacher/attendance">Attendance</a>
+        <a href="/teacher/feedback">Feedback</a>
+        <a href="/teacher/export">Export</a>
+    </div>
     <div class="container">
         <!-- Добавить курс и урок -->
         <div class="add-buttons">
@@ -96,20 +121,46 @@
             <a href="{{ url_for('teacher.add_lesson') }}" class="btn btn-secondary">Добавить урок</a>
         </div>
 
-        <!-- Остальная часть страницы -->
+        <!-- Блок статистики -->
+        <div class="stats-container">
+            <div class="stats-card">
+                <h3>Total Registered Users</h3>
+                <p>{{ total_users }}</p>
+            </div>
+            <div class="stats-card">
+                <h3>Total Students</h3>
+                <p>{{ total_students }}</p>
+            </div>
+            <div class="stats-card">
+                <h3>Total Teachers</h3>
+                <p>{{ total_teachers }}</p>
+            </div>
+            <div class="stats-card">
+                <h3>Active Users (Last 24 Hours)</h3>
+                <p>{{ active_users }}</p>
+            </div>
+            <div class="stats-card">
+                <h3>Active Courses</h3>
+                <p>{{ active_courses }}</p>
+            </div>
+            <div class="stats-card">
+                <h3>Most Popular Course</h3>
+                <p>{{ popular_course }}</p>
+            </div>
+            <div class="stats-card">
+                <h3>Average Lesson Rating</h3>
+                <p>{{ avg_lesson_rating }}</p>
+            </div>
+        </div>
     </div>
-
+    <div class="footer-links">
+        <p>Don't know how to correctly use the site?</p>
+        <p>No problem, we'll help you! Just click on
+            <a href="{{ url_for('teacher.help_page') }}">Help</a>
+            or check out some
+            <a href="{{ url_for('teacher.tips_page') }}">Tips</a>.
+        </p>
+    </div>
     <button class="notifications-button">Notifications</button>
-
-    <div class="stats">
-        <div>Active Courses: <strong>3</strong></div>
-    </div>
-
-    <div class="main-menu">
-        <a href="/teacher/courses">Courses</a>
-        <a href="/teacher/attendance">Attendance</a>
-        <a href="/teacher/feedback">Feedback</a>
-        <a href="/teacher/export">Export</a>
-    </div>
 </body>
 </html>

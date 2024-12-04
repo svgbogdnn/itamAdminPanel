@@ -20,8 +20,7 @@ class Config:
 
 def create_app():
     # Создание приложения Flask
-    app = Flask(__name__, template_folder='D:/Apps/PyCharm/itam/templates')
-    # Загрузка конфигурации
+    app = Flask(__name__, template_folder='D:/Apps/PyCharm/itam/templates')    # Загрузка конфигурации
     app.config.from_object(Config)
 
     # Инициализация приложений с базой данных, миграциями и авторизацией

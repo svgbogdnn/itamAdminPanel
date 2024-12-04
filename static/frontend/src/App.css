@@ -1,0 +1,38 @@
+@font-face {
+  font-family: 'Nunito Sans';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./assets/fonts/NunitoSans_7pt_Expanded-ExtraBold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Actay Wide';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/ActayWide-Bold.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'Monocraft';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/Monocraft.otf') format('opentype');
+}
+
+body {
+  margin: 0;
+  background-color: #1b2431;
+  font-family: Monocraft, Helvetica, Arial, sans-serif;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
