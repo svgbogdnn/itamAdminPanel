@@ -302,35 +302,45 @@ def get_lessons_for_course(course_id):
     lessons_data = [{"date": lesson.date} for lesson in lessons]
     return jsonify({"lessons": lessons_data})
 
-
 '''Feedback'''
 @teacher.route('/feedback', methods=['GET'])
 def feedback():
     teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
-    feedback_records = []
 
-    # Получаем отзывы для каждого курса и урока
-    for course in courses:
-        lessons = Lesson.query.filter_by(course_id=course.id).all()
-        for lesson in lessons:
-            feedback_records.extend(Feedback.query.filter_by(lesson_id=lesson.id).all())
+    # Получение параметров фильтрации
+    selected_course_id = request.args.get('course_id', type=int)
+    specific_date = request.args.get('specific_date')
+    sort_by = request.args.get('sort_by', 'date')
+    sort_order = request.args.get('sort_order', 'asc')
 
-    # Фильтрация и сортировка
-    sort_by = request.args.get('sort_by', 'date')  # По умолчанию сортируем по дате
-    sort_order = request.args.get('sort_order', 'asc')  # По умолчанию по возрастанию
+    # Базовый запрос
+    query = Feedback.query.join(Lesson).join(Course).filter(Course.tutor_id == teacher_id)
 
+    # Фильтрация по курсу
+    if selected_course_id:
+        query = query.filter(Course.id == selected_course_id)
+
+    if specific_date:
+        query = query.filter(Lesson.date == specific_date)
+
+    # Сортировка
     if sort_by == 'mark':
-        feedback_records = sorted(feedback_records, key=lambda f: f.mark, reverse=(sort_order == 'desc'))
-    elif sort_by == 'date':
-        feedback_records = sorted(feedback_records, key=lambda f: f.exact_time, reverse=(sort_order == 'desc'))
+        query = query.order_by(Feedback.mark.desc() if sort_order == 'desc' else Feedback.mark.asc())
+    else:
+        query = query.order_by(Lesson.date.desc() if sort_order == 'desc' else Lesson.date.asc())
 
-    # Добавляем среднюю оценку и описание качества курса
-    for course in courses:
-        course.avg_rating = course.average_rating  # Средняя оценка
-        course.quality = course.course_quality  # Качество курса
+    feedback_records = query.all()
 
-    return render_template('teacher/feedback.html', courses=courses, feedback_records=feedback_records)
+    return render_template(
+        'teacher/feedback.html',
+        courses=courses,
+        feedback_records=feedback_records,
+        selected_course_id=selected_course_id,
+        specific_date=specific_date,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
 
 @teacher.route('/feedback/response/<int:feedback_id>', methods=['POST'])
 def reply_feedback(feedback_id):
