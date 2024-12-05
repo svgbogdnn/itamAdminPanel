@@ -6,6 +6,7 @@ from flask_login import LoginManager
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
 
 def create_app():
     app = Flask(__name__, template_folder='D:/Apps/PyCharm/itam/templates')

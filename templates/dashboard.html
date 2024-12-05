@@ -100,8 +100,12 @@
 </head>
 <body>
     <div class="header">
-        <div class="welcome">
-            Добро пожаловать, <strong>[Имя пользователя]</strong>! (<strong>[Роль]</strong>)
+         <div class="welcome">
+            Добро пожаловать, <strong>{{ user_name }}</strong>! (<strong>{{ user_role }}</strong>)
+        </div>
+        <div class="teacher-rating">
+            <h3>Your rating today is - {{ teacher_rating }}</h3>
+            <p>Thank you for your contribution!</p>
         </div>
         <div class="search-bar">
             <input type="text" placeholder="Search students, courses, or lessons">

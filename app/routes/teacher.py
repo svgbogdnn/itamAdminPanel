@@ -21,6 +21,11 @@ teacher = Blueprint('teacher', __name__, template_folder='templates')
 def dashboard():
     from app.models import User
     from app.models import course_student
+    user = User.query.filter_by(id=current_user.id).first()
+
+    current_user_data = User.query.get(current_user.id)
+    user_name = current_user_data.full_name  # Или другой атрибут, соответствующий имени
+    user_role = current_user_data.role  # Или соответствующий атрибут роли
     total_users = User.query.count() #всего пользователей
     total_students = User.query.filter_by(role='student').count() #всего студентов
     total_teachers = User.query.filter_by(role='teacher').count() #всего учителей
@@ -37,16 +42,23 @@ def dashboard():
     popular_course = popular_course_query[0].name if popular_course_query else "No courses yet"
 
     avg_lesson_rating = Feedback.query.with_entities(func.avg(Feedback.mark)).scalar() #средняя оценка по фидбекам
+    teacher_feedback_query = Feedback.query.join(Course, Feedback.course_id == Course.id).filter(
+        Course.tutor_id == current_user.id
+    ).with_entities(func.avg(Feedback.mark)).scalar()
+    teacher_rating = round(teacher_feedback_query, 2) if teacher_feedback_query else "N/A"
 
     return render_template(
         'dashboard.html',
+        user_name=current_user_data.full_name,
+        user_role = current_user_data.role,
         total_users=total_users,
         total_students=total_students,
         total_teachers=total_teachers,
         active_users=active_users,
         active_courses=active_courses,
         popular_course=popular_course,
-        avg_lesson_rating=round(avg_lesson_rating, 2) if avg_lesson_rating else "N/A"
+        avg_lesson_rating=round(avg_lesson_rating, 2) if avg_lesson_rating else "N/A",
+        teacher_rating=teacher_rating
     )
 
 @teacher.route('/help', methods=['GET'])
