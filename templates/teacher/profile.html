@@ -10,23 +10,64 @@
     <h1>User Profile</h1>
 
     <div class="profile-details">
-        <img src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.jpg') }}" alt="Profile Picture" class="profile-picture">
-        <p><strong>Name:</strong> {{ user.full_name }}</p>
-        <p><strong>Nickname:</strong> {{ user.nickname }}</p>
-        <p><strong>Email:</strong> {{ user.email }}</p>
-        <p><strong>Role:</strong> {{ user.role }}</p>
-        <p><strong>University:</strong> {{ user.university }}</p>
-        <p><strong>Course Number:</strong> {{ user.num_of_course }}</p>
-        <p><strong>Institute:</strong> {{ user.institute }}</p>
-        <p><strong>Group:</strong> {{ user.group }}</p>
-        <p><strong>Date of Birth:</strong> {{ user.date_of_birth.strftime('%Y-%m-%d') }}</p>
-        <p><strong>Status:</strong> {{ user.status }}</p>
-        <p><strong>Last Login:</strong> {{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never logged in' }}</p>
-        <p><strong>Phone Number:</strong> {{ user.phone_number or 'N/A' }}</p>
-        <p><strong>Account Created:</strong> {{ user.registration_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-        <p><strong>Policy Accepted:</strong> {{ 'Yes' if user.accept_policy else 'No' }}</p>
+        <form method="POST" action="{{ url_for('teacher.profile') }}" enctype="multipart/form-data">
+            <!-- Profile Picture -->
+            <div>
+              <img src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.jpg') }}" alt="Profile Picture" class="profile-picture">
+              <label for="profile_picture">Change Profile Picture:</label>
+              <input type="file" name="profile_picture" accept="image/*">
+          </div>
 
-        <a href="{{ url_for('teacher.profile') }}">Edit Profile</a>
+
+            <!-- Full Name -->
+            <div>
+                <label for="full_name">Full Name:</label>
+                <input type="text" name="full_name" value="{{ user.full_name }}" required>
+            </div>
+
+            <!-- Nickname -->
+            <div>
+                <label for="nickname">Nickname:</label>
+                <input type="text" name="nickname" value="{{ user.nickname }}">
+            </div>
+
+            <!-- Email -->
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" name="email" value="{{ user.email }}" required readonly>
+            </div>
+
+            <!-- University -->
+            <div>
+                <label for="university">University:</label>
+                <input type="text" name="university" value="{{ user.university }}">
+            </div>
+
+            <!-- Institute -->
+            <div>
+                <label for="institute">Institute:</label>
+                <input type="text" name="institute" value="{{ user.institute }}">
+            </div>
+
+            <!-- Phone Number -->
+            <div>
+                <label for="phone_number">Phone Number:</label>
+                <input type="text" name="phone_number" value="{{ user.phone_number }}">
+            </div>
+
+            <!-- Date of Birth -->
+            <div>
+                <label for="date_of_birth">Date of Birth:</label>
+                <input type="date" name="date_of_birth" value="{{ user.date_of_birth.strftime('%Y-%m-%d') if user.date_of_birth else '' }}">
+            </div>
+
+            <!-- Submit Button -->
+            <div>
+                <button type="submit">Save Changes</button>
+            </div>
+        </form>
+
+        <a href="{{ url_for('teacher.profile') }}">Back to Profile</a>
     </div>
 </body>
 </html>

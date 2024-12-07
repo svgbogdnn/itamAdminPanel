@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Export Data</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Функция выбора всех дат
+        function selectAllDates() {
+            document.getElementById('start_date').value = '';
+            document.getElementById('end_date').value = '';
+        }
+    </script>
 </head>
 <body>
     {% include 'navbar.html' %}
-    {% block content %}
     <div class="container">
         <h2>Export Data</h2>
         <form method="POST" action="{{ url_for('teacher.export') }}">
@@ -24,27 +30,32 @@
                 <input type="date" id="end_date" name="end_date" class="form-control" value="{{ request.args.get('end_date') }}">
             </div>
 
+            <!-- Кнопка для выбора всех дат -->
+            <button type="button" onclick="selectAllDates()" class="btn btn-secondary">Select All Dates</button>
+
             <!-- Выбор курса -->
             <div class="form-group">
                 <label for="course">Course</label>
                 <select id="course" name="course" class="form-control">
                     <option value="">All Courses</option>
                     {% for course in courses %}
-                        <option value="{{ course.id }}" {% if request.args.get('course') == course.id|string %} selected {% endif %}>{{ course.name }}</option>
+                        <option value="{{ course.id }}" {% if request.args.get('course') == course.id|string %} selected {% endif %}>
+                            {{ course.name }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>
 
-            <!-- Выбор группы -->
+            <!-- Ввод группы -->
             <div class="form-group">
-                <label for="group">Group</label>
-                <input type="text" id="group" name="group" class="form-control" value="{{ request.args.get('group') }}">
+                <label for="group">Group (enter "Все" for all)</label>
+                <input type="text" id="group" name="group" class="form-control" placeholder="e.g., ИКН-101 or Все" value="{{ request.args.get('group') }}">
             </div>
 
-            <!-- Выбор студента -->
+            <!-- Ввод студента -->
             <div class="form-group">
-                <label for="student">Student</label>
-                <input type="text" id="student" name="student" class="form-control" value="{{ request.args.get('student') }}">
+                <label for="student">Student (enter "Все" for all)</label>
+                <input type="text" id="student" name="student" class="form-control" placeholder="e.g., Иван Иванов or Все" value="{{ request.args.get('student') }}">
             </div>
 
             <!-- Тип данных для экспорта -->
@@ -60,6 +71,5 @@
             <button type="submit" class="btn btn-primary">Export</button>
         </form>
     </div>
-    {% endblock %}
 </body>
 </html>

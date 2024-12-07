@@ -88,3 +88,31 @@ a.profile-btn {
     font-size: 16px;
     text-align: center;
 }
+
+.bulk-actions {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.btn-success:hover, .btn-danger:hover {
+    opacity: 0.9;
+}

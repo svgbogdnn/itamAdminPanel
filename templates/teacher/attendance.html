@@ -95,6 +95,11 @@
             </div>
         </div>
 
+        <div class="bulk-actions">
+            <button type="button" onclick="updateAllStatuses('was')" class="btn btn-success">Отметить всех присутствующими</button>
+            <button type="button" onclick="updateAllStatuses('not')" class="btn btn-danger">Отметить всех отсутствующими</button>
+        </div>
+
         <button type="submit">Apply Filters</button>
         <a href="{{ url_for('teacher.attendance') }}">Reset Filters</a>
     </form>
@@ -115,7 +120,15 @@
                     <td>{{ record.student.full_name }}</td>
                     <td>{{ record.lesson.course.name }}</td>
                     <td>{{ record.lesson.date }}</td>
-                    <td>{{ record.status }}</td>
+                    <td>
+                        <button class="status-button"
+                                data-id="{{ record.id }}"
+                                onclick="updateStatus({{ record.id }}, this)">
+                            {{ 'Was' if record.status == 'was' else 'Not' }}
+                        </button>
+                        <a href="{{ url_for('teacher.edit_attendance_record', record_id=record.id) }}" class="edit-button">Edit</a>
+                    </td>
+
                 </tr>
             {% endfor %}
         </tbody>
@@ -146,5 +159,46 @@
         }
 
     </script>
+    <script>
+        function updateStatus(recordId, button) {
+            fetch(`/teacher/attendance/update_status/${recordId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем текст кнопки в зависимости от нового статуса
+                    button.textContent = data.new_status === 'was' ? 'Was' : 'Not';
+                } else {
+                    alert('Failed to update status!');
+                }
+            })
+            .catch(err => console.error(err));
+        }
+    </script>
+    <script>
+        function updateAllStatuses(newStatus) {
+            fetch('/teacher/update_all_statuses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: newStatus }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload(); // Перезагрузка страницы для отображения изменений
+                } else {
+                    alert('Ошибка при обновлении статусов');
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
+        }
+    </script>
+
+
 </body>
 </html>

@@ -11,6 +11,8 @@ from openpyxl import Workbook
 from io import BytesIO
 from flask import send_file
 from flask_login import current_user, login_required
+from werkzeug.utils import secure_filename
+import os
 #maintain my man
 
 teacher = Blueprint('teacher', __name__, template_folder='templates')
@@ -21,7 +23,9 @@ teacher = Blueprint('teacher', __name__, template_folder='templates')
 def dashboard():
     from app.models import User
     from app.models import course_student
+    teacher_id = current_user.id
     user = User.query.filter_by(id=current_user.id).first()
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()  # Получаем все курсы текущего преподавателя
 
     current_user_data = User.query.get(current_user.id)
     user_name = current_user_data.full_name  # Или другой атрибут, соответствующий имени
@@ -49,6 +53,7 @@ def dashboard():
 
     return render_template(
         'dashboard.html',
+        user = user,
         user_name=current_user_data.full_name,
         user_role = current_user_data.role,
         total_users=total_users,
@@ -58,7 +63,8 @@ def dashboard():
         active_courses=active_courses,
         popular_course=popular_course,
         avg_lesson_rating=round(avg_lesson_rating, 2) if avg_lesson_rating else "N/A",
-        teacher_rating=teacher_rating
+        teacher_rating=teacher_rating,
+        courses=courses
     )
 
 @teacher.route('/help', methods=['GET'])
@@ -73,12 +79,68 @@ def tips_page():
 def notifications():
     return render_template('teacher/notifications.html')
 
-@teacher.route('/teacher/profile')
+
+@teacher.route('/teacher/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
     from app.models import User
     user = User.query.filter_by(id=current_user.id).first()
-    return render_template('teacher/profile.html', user=user)
+
+    if request.method == 'POST':
+        # Собираем данные из формы
+        user.full_name = request.form.get('full_name')
+        user.nickname = request.form.get('nickname')
+        user.university = request.form.get('university')
+        user.institute = request.form.get('institute')
+        user.phone_number = request.form.get('phone_number')
+        user.date_of_birth = request.form.get('date_of_birth') or None
+
+        # Обработка загруженного фото
+        if 'profile_picture' in request.files:
+            picture = request.files['profile_picture']
+            if picture:
+                picture_filename = secure_filename(picture.filename)
+                picture_path = os.path.join('static', 'images', picture_filename)
+                picture.save(picture_path)
+                user.profile_picture = picture_path
+
+        db.session.commit()
+
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('teacher.profile'))
+
+    return render_template('teacher/profile.html', user=current_user)
+
+@teacher.route('/teacher/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    from app.models import User
+    user = User.query.filter_by(id=current_user.id).first()
+
+    if request.method == 'POST':
+        # Обновление данных пользователя
+        user.full_name = request.form.get('full_name')
+        user.nickname = request.form.get('nickname')
+        user.university = request.form.get('university')
+        user.institute = request.form.get('institute')
+        user.phone_number = request.form.get('phone_number')
+        user.date_of_birth = request.form.get('date_of_birth') or None
+
+        # Обработка изображения профиля
+        if 'profile_picture' in request.files:
+            picture = request.files['profile_picture']
+            if picture:
+                picture_filename = secure_filename(picture.filename)
+                picture_path = os.path.join('static', 'images', picture_filename)
+                picture.save(picture_path)
+
+                user.profile_picture = picture_path
+
+        db.session.commit()
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('teacher.profile'))  # Переход к профилю после обновления
+
+    return redirect(url_for('teacher.profile'))  # В случае ошибки просто возвращаем на страницу профиля
 
 '''Courses'''
 @teacher.route('/courses', methods=['GET'])
@@ -86,12 +148,6 @@ def courses():
     teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     return render_template('teacher/courses.html', courses=courses)
-
-@teacher.route('/courses/<int:course_id>')
-def course_details(course_id):
-    teacher_id = current_user.id
-    course = Course.query.filter_by(id=course_id, tutor_id=teacher_id).first_or_404()
-    return f"Details for course: {course.name}"
 
 @teacher.route('/courses/add', methods=['GET', 'POST'])
 def add_course():
@@ -120,6 +176,26 @@ def add_course():
         flash('Course added successfully!', category='success')
         return redirect(url_for('teacher.courses'))
     return render_template('teacher/add_course.html')
+
+@teacher.route('/courses/<int:course_id>', methods=['GET'])
+@login_required
+def course_details(course_id):
+    course = Course.query.filter_by(id=course_id, tutor_id=current_user.id).first_or_404()
+    lessons = Lesson.query.filter_by(course_id=course_id).order_by(Lesson.date).all()
+    total_lessons = len(lessons)
+    completed_lessons = sum(1 for lesson in lessons if lesson.date <= datetime.utcnow().date())
+    remaining_lessons = total_lessons - completed_lessons
+
+    return render_template(
+        'teacher/course_details.html',
+        course=course,
+        lessons=lessons,
+        statistics={
+            'total_lessons': total_lessons,
+            'completed_lessons': completed_lessons,
+            'remaining_lessons': remaining_lessons
+        }
+    )
 
 @teacher.route('/courses/<int:course_id>/edit', methods=['GET', 'POST'])
 def edit_course(course_id):
@@ -150,38 +226,58 @@ def lessons(course_id):
     teacher_id = current_user.id
     return f"Lessons for course ID: {course_id}"
 
-@teacher.route('/add_lesson', methods=['GET', 'POST'])
+@teacher.route('/courses/<int:course_id>/add_lesson', methods=['GET', 'POST'])
 @login_required
-def add_lesson():
+def add_lesson(course_id):
+    course = Course.query.filter_by(id=course_id, tutor_id=current_user.id).first_or_404()
     if request.method == 'POST':
         # Получаем данные из формы
-        lesson_title = request.form.get('topic')
-        lesson_date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()  # Преобразуем строку в дату
-        start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()  # Время начала
-        end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time() if request.form.get('end_time') else None  # Время окончания (если есть)
+        topic = request.form.get('topic')
+        lesson_date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
+        start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
+        end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time() if request.form.get(
+            'end_time') else None
         location = request.form.get('location')
-        course_id = request.form.get('course_id')
 
-        # Создаем новый объект Lesson
+        # Создаём новый урок
         new_lesson = Lesson(
-            course_id=course_id,
+            course_id=course.id,
+            topic=topic,
             date=lesson_date,
-            topic=lesson_title,
             start_time=start_time,
             end_time=end_time,
             location=location
         )
-
-        # Добавляем в базу данных
         db.session.add(new_lesson)
         db.session.commit()
+        return redirect(url_for('teacher.course_details', course_id=course.id))
+    return render_template('teacher/add_lesson.html', course=course)
 
-        # Перенаправляем обратно на страницу курса или на страницу с уроками
+@teacher.route('/add_lesson_general', methods=['GET', 'POST'])
+@login_required
+def add_lesson_general():
+    courses = Course.query.filter_by(tutor_id=current_user.id).all()
+    if request.method == 'POST':
+        course_id = request.form.get('course_id')
+        topic = request.form.get('topic')
+        lesson_date = datetime.strptime(request.form.get('date'), '%Y-%m-%d').date()
+        start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
+        end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time() if request.form.get('end_time') else None
+        location = request.form.get('location')
+
+        # Создаём новый урок
+        new_lesson = Lesson(
+            course_id=course_id,
+            topic=topic,
+            date=lesson_date,
+            start_time=start_time,
+            end_time=end_time,
+            location=location
+        )
+        db.session.add(new_lesson)
+        db.session.commit()
         return redirect(url_for('teacher.dashboard'))
-
-    # Для GET-запроса, выводим форму
-    courses = Course.query.all()  # Получаем список всех курсов из базы данных
-    return render_template('teacher/add_lesson.html', courses=courses)
+    return render_template('teacher/add_lesson_general.html', courses=courses)
 
 @teacher.route('/courses/<int:course_id>/students', methods=['GET'])
 def view_students(course_id):
@@ -314,6 +410,47 @@ def get_lessons_for_course(course_id):
     lessons_data = [{"date": lesson.date} for lesson in lessons]
     return jsonify({"lessons": lessons_data})
 
+@teacher.route('/attendance/edit/<int:record_id>', methods=['GET', 'POST'])
+@login_required
+def edit_attendance_record(record_id):
+    record = Attendance.query.get_or_404(record_id)
+
+    if request.method == 'POST':
+        # Получаем данные из формы
+        record.status = request.form.get('status')
+        record.comments = request.form.get('comments', '')  # Допустим, есть поле комментариев
+        db.session.commit()
+        flash('Attendance record updated successfully!', 'success')
+        return redirect(url_for('teacher.attendance'))
+
+    return render_template('teacher/edit_attendance.html', record=record)
+
+@teacher.route('/attendance/update_status/<int:record_id>', methods=['POST'])
+@login_required
+def update_attendance_status(record_id):
+    record = Attendance.query.get_or_404(record_id)
+    record.status = 'not' if record.status == 'was' else 'was'
+    db.session.commit()
+    return jsonify({"success": True, "new_status": record.status})
+
+@teacher.route('/update_all_statuses', methods=['POST'])
+@login_required
+def update_all_statuses():
+    data = request.get_json()
+    new_status = data.get('status')
+
+    if new_status not in ['was', 'not']:
+        return jsonify({'error': 'Invalid status'}), 400
+
+    # Обновляем все записи статусов
+    records = Attendance.query.join(Lesson).join(Course).filter(Course.tutor_id == current_user.id).all()
+    for record in records:
+        if record.status != new_status:  # Меняем статус только если он отличается
+            record.status = new_status
+    db.session.commit()
+
+    return jsonify({'success': True}), 200
+
 '''Feedback'''
 @teacher.route('/feedback', methods=['GET'])
 def feedback():
@@ -417,51 +554,96 @@ def submit_feedback(lesson_id):
     return render_template('teacher/manage_feedback.html', lesson=lesson)
 
 '''Export'''
+
 @teacher.route('/export/csv', methods=['GET'])
 def export_csv():
+    from app.models import User
     teacher_id = current_user.id
-    courses = Course.query.filter_by(tutor_id=teacher_id).all()
 
     # Получаем параметры фильтрации
     course_filter = request.args.get('course', None)
-    date_filter = request.args.get('date', None)
+    start_date_str = request.args.get('start_date', None)
+    end_date_str = request.args.get('end_date', None)
     student_filter = request.args.get('student', None)
 
-    query = Feedback.query
+    # Преобразование дат
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+
+    # Запрос для фильтрации Feedback
+    query = Feedback.query.join(Course).join(User, Feedback.student_id == User.id).filter(Course.tutor_id == teacher_id)
 
     if course_filter:
-        query = query.filter_by(course_id=course_filter)
-    if date_filter:
-        query = query.filter(Feedback.exact_time >= date_filter)
+        query = query.filter(Course.id == course_filter)
+    if start_date:
+        query = query.filter(Feedback.exact_time >= start_date)
+    if end_date:
+        query = query.filter(Feedback.exact_time <= end_date)
     if student_filter:
-        query = query.filter_by(student_id=student_filter)
+        query = query.filter(User.id == student_filter)
 
     filtered_feedbacks = query.all()
+
+    # Если записей нет, вернуть пустой CSV с заголовками
+    if not filtered_feedbacks:
+        si = StringIO()
+        writer = csv.writer(si)
+        writer.writerow(['Course', 'Student', 'Mark', 'Comment'])
+        response = Response(si.getvalue(), mimetype='text/csv')
+        response.headers['Content-Disposition'] = 'attachment; filename=feedback_export.csv'
+        return response
 
     # Подготовка данных для CSV
     si = StringIO()
     writer = csv.writer(si)
-    writer.writerow(['Course', 'Student', 'Mark', 'Comment'])
-    for feedback in filtered_feedbacks:
-        writer.writerow([feedback.course.name, feedback.student.full_name, feedback.mark, feedback.comment])
+    writer.writerow(['Course', 'Student', 'Mark', 'Comment'])  # Заголовки CSV
 
+    for feedback in filtered_feedbacks:
+        writer.writerow([
+            feedback.course.name,
+            feedback.student.full_name,
+            feedback.mark,
+            feedback.comment
+        ])
+
+    # Создание ответа
     output = si.getvalue()
     response = Response(output, mimetype='text/csv')
     response.headers['Content-Disposition'] = 'attachment; filename=feedback_export.csv'
     return response
 
+
+@teacher.route('/get_groups', methods=['GET'])
+def get_groups():
+    from app.models import User
+    course_id = request.args.get('course_id')
+    # Фильтруем пользователей-студентов по курсу
+    groups = User.query.filter_by(role='student').with_entities(User.group).distinct().all()
+    group_list = [g.group for g in groups if g.group]
+    return jsonify(group_list)
+
+@teacher.route('/get_students', methods=['GET'])
+def get_students():
+    from app.models import User
+    group_name = request.args.get('group_name')  # Группа
+    if group_name:
+        students = User.query.filter_by(role='student', group=group_name).all()
+    else:
+        students = User.query.filter_by(role='student').all()
+
+    student_list = [{'id': s.id, 'full_name': s.full_name} for s in students]
+    return jsonify(student_list)
+
 @teacher.route('/export', methods=['GET', 'POST'])
 def export():
-    # if group or student = None ==> all groups or students
     if request.method == 'POST':
         # Получаем параметры фильтрации из формы
         start_date_str = request.form.get('start_date')
         end_date_str = request.form.get('end_date')
         data_type = request.form.get('data_type', 'attendance')  # По умолчанию экспорт посещаемости
         course_filter = request.form.get('course')
-        #make a temporary filter for students like online fil
-        group_filter = request.form.get('group')
-        student_filter = request.form.get('student')
+        group_filter = request.form.get('group')  # Новый фильтр группы
+        student_filter = request.form.get('student')  # Новый фильтр студента
 
         # Преобразуем start_date и end_date в формат datetime.date
         start_date = None
@@ -470,15 +652,15 @@ def export():
             try:
                 start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             except ValueError:
-                start_date = None  # Если дата некорректная, игнорируем фильтрацию по дате
+                pass
         if end_date_str:
             try:
                 end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             except ValueError:
-                end_date = None  # Если дата некорректная, игнорируем фильтрацию по дате
+                pass
 
         # Получаем курсы, которые доступны для учителя
-        teacher_id = current_user.id  # Для теста можно использовать статическое значение
+        teacher_id = current_user.id
         courses = Course.query.filter_by(tutor_id=teacher_id).all()
 
         if data_type == 'attendance':
@@ -496,13 +678,22 @@ def export():
             if end_date:
                 attendance_records = [a for a in attendance_records if a.lesson.date <= end_date]
 
-            # Фильтрация по студенту
-            if student_filter:
-                attendance_records = [a for a in attendance_records if student_filter.lower() in a.student.full_name.lower()]
-
             # Фильтрация по группе
-            if group_filter:
-                attendance_records = [a for a in attendance_records if group_filter.lower() in a.student.group.lower()]
+            if group_filter and group_filter.lower() != 'все':
+                attendance_records = [
+                    a for a in attendance_records if group_filter.lower() in (a.student.group or '').lower()
+                ]
+
+            # Фильтрация по студенту
+            if student_filter and student_filter.lower() != 'все':
+                attendance_records = [
+                    a for a in attendance_records if student_filter.lower() in (a.student.full_name or '').lower()
+                ]
+
+            # Если нет записей для экспорта
+            if not attendance_records:
+                flash('No records found for the selected filters.', 'warning')
+                return redirect(url_for('teacher.export'))
 
             # Экспорт в Excel
             wb = Workbook()
@@ -524,13 +715,222 @@ def export():
             output.seek(0)
 
             # Отправка файла пользователю
-            return send_file(output, as_attachment=True, download_name="attendance_export.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            return send_file(output, as_attachment=True, download_name="svg_attendance_export.xlsx",
+                             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    else:
-        # Для GET-запроса показываем форму с выбором
-        teacher_id = current_user.id  # Для теста можно использовать статическое значение
-        courses = Course.query.filter_by(tutor_id=teacher_id).all()
+        elif data_type == 'feedback':
+            feedback_records = Feedback.query.join(Course).filter(Course.tutor_id == teacher_id)
 
-        return render_template('teacher/export.html', courses=courses)
+            # Фильтрация по курсу
+            if course_filter and course_filter.lower() != 'все':
+                feedback_records = feedback_records.filter(Feedback.course_id == course_filter)
 
+            # Фильтрация по дате
+            if start_date:
+                feedback_records = feedback_records.filter(Feedback.exact_time >= start_date)
+            if end_date:
+                feedback_records = feedback_records.filter(Feedback.exact_time <= end_date)
 
+            feedback_records = feedback_records.all()
+
+            # Если нет записей для экспорта
+            if not feedback_records:
+                flash('No feedback records found for the selected filters.', 'warning')
+                return redirect(url_for('teacher.export'))
+
+            # Экспорт фидбэков в Excel
+            wb = Workbook()
+            ws = wb.active
+            ws.append(["Course Name", "Student Name", "Feedback Mark", "Comment", "Exact Time"])
+
+            for feedback in feedback_records:
+                ws.append([
+                    feedback.course.name,
+                    feedback.student.full_name,
+                    feedback.mark,
+                    feedback.comment,
+                    feedback.exact_time.strftime('%Y-%m-%d %H:%M:%S')
+                ])
+
+            # Сохранение в буфер
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+
+            # Отправка файла пользователю
+            return send_file(output, as_attachment=True, download_name="svg_feedback_export.xlsx",
+                             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+        elif data_type == 'course':
+            # Экспорт курсов
+            course_records = courses if courses else []
+
+            # Если нет записей для экспорта
+            if not course_records:
+                flash('No course records found for the selected filters.', 'warning')
+                return redirect(url_for('teacher.export'))
+
+            # Экспорт курсов в Excel
+            wb = Workbook()
+            ws = wb.active
+            ws.append(["Course Name", "Description", "Start Date", "End Date", "Category", "Number of Students"])
+
+            for course in course_records:
+                ws.append([
+                    course.name,
+                    course.description,
+                    course.start_date.strftime('%Y-%m-%d') if course.start_date else "N/A",
+                    course.end_date.strftime('%Y-%m-%d') if course.end_date else "N/A",
+                    course.category if course.category else "N/A",
+                    course.students_count
+                ])
+
+            # Сохранение в буфер
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+
+            # Отправка файла пользователю
+            return send_file(output, as_attachment=True, download_name="svg_course_export.xlsx",
+                             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+        else:
+            flash('Invalid data type selected for export.', 'danger')
+            return redirect(url_for('teacher.export'))
+
+    # Для GET-запроса показываем форму с выбором
+    teacher_id = current_user.id
+    courses = Course.query.filter_by(tutor_id=teacher_id).all()
+    return render_template('teacher/export.html', courses=courses)
+
+'''JSONIFY'''
+'''
+@teacher.route('/dashboard', methods=['GET'])
+@login_required
+def dashboard():
+    from app.models import User
+    from app.models import course_student
+
+    current_user_data = User.query.get(current_user.id)
+    user_name = current_user_data.full_name
+    user_role = current_user_data.role
+    total_users = User.query.count()
+    total_students = User.query.filter_by(role='student').count()
+    total_teachers = User.query.filter_by(role='teacher').count()
+    active_users = User.query.filter(User.last_login >= datetime.now() - timedelta(days=1)).count()
+    active_courses = Course.query.filter_by(status='active').count()
+
+    # Самый популярный курс
+    popular_course_query = db.session.query(
+        Course,
+        db.func.count(course_student.c.student_id).label('student_count')
+    ).join(course_student, Course.id == course_student.c.course_id).group_by(Course.id).order_by(
+        db.func.count(course_student.c.student_id).desc()
+    ).first()
+    popular_course = popular_course_query[0].name if popular_course_query else "No courses yet"
+
+    # Средняя оценка уроков
+    avg_lesson_rating = Feedback.query.with_entities(func.avg(Feedback.mark)).scalar()
+    teacher_feedback_query = Feedback.query.join(Course, Feedback.course_id == Course.id).filter(
+        Course.tutor_id == current_user.id
+    ).with_entities(func.avg(Feedback.mark)).scalar()
+    teacher_rating = round(teacher_feedback_query, 2) if teacher_feedback_query else "N/A"
+
+    return jsonify({
+        'user_name': user_name,
+        'user_role': user_role,
+        'total_users': total_users,
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'active_users': active_users,
+        'active_courses': active_courses,
+        'popular_course': popular_course,
+        'avg_lesson_rating': round(avg_lesson_rating, 2) if avg_lesson_rating else "N/A",
+        'teacher_rating': teacher_rating
+    }), 200
+
+@teacher.route('/help', methods=['GET'])
+def help_page():
+    return jsonify({'message': 'Help page content.'}), 200
+
+@teacher.route('/tips', methods=['GET'])
+def tips_page():
+    return jsonify({'message': 'Tips page content.'}), 200
+
+@teacher.route('/notifications', methods=['GET'])
+def notifications():
+    return jsonify({'message': 'Notifications content.'}), 200
+
+@teacher.route('/teacher/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    from app.models import User
+    user = User.query.filter_by(id=current_user.id).first()
+
+    if request.method == 'POST':
+        # Собираем данные из формы
+        user.full_name = request.form.get('full_name')
+        user.nickname = request.form.get('nickname')
+        user.university = request.form.get('university')
+        user.institute = request.form.get('institute')
+        user.phone_number = request.form.get('phone_number')
+        user.date_of_birth = request.form.get('date_of_birth') or None
+
+        # Обработка загруженного фото
+        if 'profile_picture' in request.files:
+            picture = request.files['profile_picture']
+            if picture:
+                picture_filename = secure_filename(picture.filename)
+                picture_path = os.path.join('static', 'images', picture_filename)
+                picture.save(picture_path)
+                user.profile_picture = picture_path
+
+        db.session.commit()
+        return jsonify({'message': 'Profile updated successfully!'}), 200
+
+    # Возвращаем данные профиля в формате JSON
+    return jsonify({
+        'full_name': user.full_name,
+        'nickname': user.nickname,
+        'university': user.university,
+        'institute': user.institute,
+        'phone_number': user.phone_number,
+        'date_of_birth': user.date_of_birth,
+        'profile_picture': user.profile_picture
+    }), 200    
+    
+@teacher.route('/teacher/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    from app.models import User
+    user = User.query.filter_by(id=current_user.id).first()
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.get_json()
+
+    # Обновление данных пользователя
+    user.full_name = data.get('full_name', user.full_name)
+    user.nickname = data.get('nickname', user.nickname)
+    user.university = data.get('university', user.university)
+    user.institute = data.get('institute', user.institute)
+    user.phone_number = data.get('phone_number', user.phone_number)
+    user.date_of_birth = data.get('date_of_birth', user.date_of_birth)
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Profile updated successfully',
+        'updated_user': {
+            'full_name': user.full_name,
+            'nickname': user.nickname,
+            'university': user.university,
+            'institute': user.institute,
+            'phone_number': user.phone_number,
+            'date_of_birth': user.date_of_birth
+        }
+    }), 200
+
+'''

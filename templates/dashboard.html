@@ -100,9 +100,19 @@
 </head>
 <body>
     <div class="header">
-         <div class="welcome">
-            Добро пожаловать, <strong>{{ user_name }}</strong>! (<strong>{{ user_role }}</strong>)
+         <body>
+    <div class="header">
+        <!-- Приветствие пользователя с фото -->
+        <div class="welcome">
+            <img src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.jpg') }}" alt="Profile Picture" class="profile-picture" style="width: 50px; height: 50px; border-radius: 50%; margin-right: 10px;">
+            Добро пожаловать, <strong>{{ user.full_name }}</strong>! (<strong>{{ user.role }}</strong>)
         </div>
+
+    </div>
+
+    <!-- Остальной контент страницы -->
+</body>
+
         <div class="teacher-rating">
             <h3>Your rating today is - {{ teacher_rating }}</h3>
             <p>Thank you for your contribution!</p>
@@ -110,7 +120,7 @@
         <div class="search-bar">
             <input type="text" placeholder="Search students, courses, or lessons">
         </div>
-        <button class="profile-button">Profile</button>
+        <a href="{{ url_for('teacher.profile') }}" class="profile-button">Profile</a>
     </div>
     <div class="main-menu">
         <a href="/teacher/courses">Courses</a>
@@ -122,8 +132,10 @@
         <!-- Добавить курс и урок -->
         <div class="add-buttons">
             <a href="{{ url_for('teacher.add_course') }}" class="btn btn-primary">Добавить курс</a>
-            <a href="{{ url_for('teacher.add_lesson') }}" class="btn btn-secondary">Добавить урок</a>
+            <a href="{{ url_for('teacher.add_lesson_general') }}" class="btn btn-secondary">Добавить урок</a>
         </div>
+
+
 
         <!-- Блок статистики -->
         <div class="stats-container">

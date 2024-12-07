@@ -4,29 +4,27 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import aliased
 from flask_login import UserMixin
 from app import login_manager
-
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Таблица пользователей
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(255), nullable=False)
-    nickname = db.Column(db.String(50), nullable=False)  # Никнейм
-    university = db.Column(db.String(255), nullable=False)  # Университет
-    num_of_course = db.Column(db.String(10), nullable=False)  # Номер курса
-    institute = db.Column(db.String(255), nullable=True)  # Институт
-    group = db.Column(db.String(50), nullable=False)  # Группа
     email = db.Column(db.String(255), unique=True, nullable=False)
+    nickname = db.Column(db.String(50), nullable=True)  # Никнейм
+    university = db.Column(db.String(255), nullable=True)  # Университет
+    num_of_course = db.Column(db.String(10), nullable=True)  # Номер курса
+    institute = db.Column(db.String(255), nullable=True)  # Институт
+    group = db.Column(db.String(50), nullable=True)  # Группа
     role = db.Column(db.String(50), nullable=False)  # student, teacher, admin
     password_hash = db.Column(db.Text, nullable=False)
     registration_date = db.Column(db.DateTime, default=db.func.now())
     status = db.Column(db.String(50), default='offline')  # online/offline
     last_login = db.Column(db.DateTime)
     profile_picture = db.Column(db.Text)
-    phone_number = db.Column(db.String(20))
-    date_of_birth = db.Column(db.Date, nullable=False)  # Дата рождения
+    phone_number = db.Column(db.String(20), nullable=True)
+    date_of_birth = db.Column(db.Date, nullable=True)  # Дата рождения
     accept_policy = db.Column(db.Boolean, nullable=False)  # Чекбокс принятия политики
 
     def set_password(self, password):
@@ -47,9 +45,15 @@ class User(db.Model, UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    from app.models import User  # импорт внутри функции
+    from app.models import User
     return User.query.get(int(user_id))
 
+# for temporary
+course_student = db.Table(
+    'course_student',
+    db.Column('course_id', db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"), primary_key=True),
+    db.Column('student_id', db.Integer, db.ForeignKey('students.id', ondelete="CASCADE"), primary_key=True)
+)
 
 class Course(db.Model):
     __tablename__ = 'courses'
@@ -153,13 +157,6 @@ class Student(db.Model):
         back_populates='students'
     )
 
-# for temporary
-course_student = db.Table(
-    'course_student',
-    db.Column('course_id', db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"), primary_key=True),
-    db.Column('student_id', db.Integer, db.ForeignKey('students.id', ondelete="CASCADE"), primary_key=True)
-)
-
 # Таблица отзывов
 class Feedback(db.Model):
     __tablename__ = 'feedback'
@@ -219,7 +216,7 @@ class ExtraMaterial(db.Model):
     description = db.Column(db.Text)
     file_path = db.Column(db.Text, nullable=False)
     uploaded_at = db.Column(db.DateTime, default=db.func.now())
-    need_to_delete = db.Column(db.String(10), nullable=False) # to upgrade db
+    need_to_delete = db.Column(db.String(255), nullable=False) # to upgrade db
 
 # Таблица логов
 class Log(db.Model):
