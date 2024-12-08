@@ -50,14 +50,14 @@ def register():
         full_name = request.form.get('full_name')
         role = request.form.get('role')
         email = request.form.get('email')
-        nickname = request.form.get('nickname')
+        # nickname = request.form.get('nickname')
         phone_number = request.form.get('phone_number')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         accept_policy = request.form.get('accept_policy')
 
         # Проверка обязательных полей
-        if not all([full_name, role, email, nickname, phone_number, password, confirm_password]):
+        if not all([full_name, role, email, phone_number, password, confirm_password]):
             flash('All fields are required!', category='error')
             return redirect(url_for('auth.register'))
 
@@ -82,7 +82,6 @@ def register():
             full_name=full_name,
             role=role,
             email=email,
-            nickname=nickname,
             password_hash=generate_password_hash(password, method='pbkdf2:sha256'),
             phone_number=phone_number,
             # Остальные поля заполняются значением None
@@ -92,6 +91,7 @@ def register():
             group=None,
             date_of_birth=None,
             accept_policy=True if accept_policy == 'on' else False,
+            nickname=None
         )
         db.session.add(new_user)
         db.session.commit()

@@ -31,11 +31,14 @@ def create_app():
     # Указание страницы, куда перенаправлять пользователей, если они не авторизованы
     login_manager.login_view = 'auth.login'
 
-    # Импортирование маршрутов
     from app.routes.auth import auth
     from app.routes.teacher import teacher
-    # Регистрация маршрутов с префиксами
+
+    app.register_blueprint(teacher, url_prefix='/student/dashboard')
+    app.register_blueprint(teacher, url_prefix='/student/attendance')
+    app.register_blueprint(teacher, url_prefix='/student/courses')
+    app.register_blueprint(teacher, url_prefix='/student/feedback')
+
     app.register_blueprint(auth, url_prefix='/auth')
     app.register_blueprint(teacher, url_prefix='/teacher')
-
     return app

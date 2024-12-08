@@ -99,6 +99,7 @@
     </style>
 </head>
 <body>
+  {% include 'navbar.html' %}
     <div class="header">
          <body>
     <div class="header">
@@ -108,6 +109,16 @@
             Добро пожаловать, <strong>{{ user.full_name }}</strong>! (<strong>{{ user.role }}</strong>)
         </div>
 
+    </div>
+    <!-- Вставьте это прямо перед </body> -->
+    <div class="notifications-popup" id="notificationsPopup" style="display: none;">
+        <div class="notifications-header">
+            <h2>Notifications</h2>
+            <button onclick="closeNotifications()">Close</button>
+        </div>
+        <ul id="notificationsList">
+            <!-- Уведомления подгружаются через JavaScript -->
+        </ul>
     </div>
 
     <!-- Остальной контент страницы -->
@@ -177,6 +188,5 @@
             <a href="{{ url_for('teacher.tips_page') }}">Tips</a>.
         </p>
     </div>
-    <button class="notifications-button">Notifications</button>
 </body>
 </html>

@@ -26,7 +26,12 @@ class User(db.Model, UserMixin):
     phone_number = db.Column(db.String(20), nullable=True)
     date_of_birth = db.Column(db.Date, nullable=True)  # Дата рождения
     accept_policy = db.Column(db.Boolean, nullable=False)  # Чекбокс принятия политики
-
+    # courses = db.relationship(
+    #     'Course',
+    #     secondary='course_student',
+    #     back_populates='students'
+    # )
+    courses_assoc = db.relationship('CourseStudent', back_populates='student', cascade="all, delete-orphan")
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -49,11 +54,23 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # for temporary
-course_student = db.Table(
-    'course_student',
-    db.Column('course_id', db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"), primary_key=True),
-    db.Column('student_id', db.Integer, db.ForeignKey('students.id', ondelete="CASCADE"), primary_key=True)
-)
+# course_student = db.Table(
+#     'course_student',
+#     db.Column('course_id', db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"), nullable=False),
+#     db.Column('student_id', db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
+# )
+class CourseStudent(db.Model):
+    __tablename__ = 'course_student'
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id', ondelete="CASCADE"), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
+    added_date = db.Column(db.DateTime, default=db.func.now())  # Время добавления записи
+    status = db.Column(db.String(50), default='active')  # Например: active/inactive
+
+    # Связь с другими таблицами
+    course = db.relationship('Course', back_populates='students_assoc')
+    student = db.relationship('User', back_populates='courses_assoc')
 
 class Course(db.Model):
     __tablename__ = 'courses'
@@ -68,11 +85,12 @@ class Course(db.Model):
     end_date = db.Column(db.Date)
     course_code = db.Column(db.String(50), unique=True)
     category = db.Column(db.String(100))
-    students = db.relationship(
-        'Student',
-        secondary='course_student',
-        back_populates='courses'
-    )
+    # students = db.relationship(
+    #     'User',
+    #     secondary='course_student',
+    #     back_populates='courses'
+    # )
+    students_assoc = db.relationship('CourseStudent', back_populates='course', cascade="all, delete-orphan")
     lessons = db.relationship(
         'Lesson',
         backref='course',
@@ -120,6 +138,7 @@ class Lesson(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time)
     location = db.Column(db.String(255))
+    # attendance = db.relationship('Attendance', backref = 'lesson')
     # attendance_records = db.relationship('Attendance', backref='lesson_record', lazy=True, overlaps="attendances_list")
 
 # Таблица посещаемости
@@ -132,30 +151,10 @@ class Attendance(db.Model):
     status = db.Column(db.String(50), nullable=False)  # was/not
     comments = db.Column(db.Text)
     reason_of_excuse = db.Column(db.Text)
-    student = db.relationship('User', backref='attendance_records')
     lesson = db.relationship('Lesson', backref='attendances_list', overlaps="attendance_records")  # Указываем overlaps
     course = db.relationship('Course', secondary='lessons', viewonly=True)
-
-# Таблица студентов
-class Student(db.Model):
-    __tablename__ = 'students'
-
-    id = db.Column(db.Integer, primary_key=True)
-    full_name = db.Column(db.String(255), nullable=False)  # Полное имя
-    email = db.Column(db.String(255), unique=True, nullable=False)  # Email
-    phone_number = db.Column(db.String(20))  # Телефон
-    date_of_birth = db.Column(db.Date)  # Дата рождения
-    registration_date = db.Column(db.DateTime, default=db.func.now())  # Дата регистрации
-    group = db.Column(db.String(50))  # Группа студента
-    university = db.Column(db.String(255))  # Институт или университет
-    status = db.Column(db.String(50), default='active')  # Статус (active/finished)
-
-    # Связь с курсами через промежуточную таблицу
-    courses = db.relationship(
-        'Course',
-        secondary='course_student',
-        back_populates='students'
-    )
+    student_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"))
+    student = db.relationship('User', backref='attendance_records')
 
 # Таблица отзывов
 class Feedback(db.Model):
