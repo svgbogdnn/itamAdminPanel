@@ -1,5 +1,4 @@
 import React from 'react';
-import { Container } from '../../components/Container';
 import { Header } from '../../components/Header';
 import { Content } from '../../components/Content';
 import * as Styled from './ChangePassPage.styled';
@@ -8,7 +7,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 
 export const ChangePassPage = () => {
   return (
-    <Container>
+    <Styled.Container>
       <Header links={[{ title: 'Вернуться назад' }]} />
       <Content title='Смена пароля'>
         <Styled.Form autoComplete='off'>
@@ -16,9 +15,9 @@ export const ChangePassPage = () => {
           <TextInput id='email' placeholder='Почта/телефон' autoComplete='off' />
           <TextInput id='password' type='password' placeholder='Новый пароль' autoComplete='off' />
           <TextInput id='password' type='password' placeholder='Повторите пароль' autoComplete='off' />
-          <PrimaryButton type='submit' title='Подтвердить' />
+          <PrimaryButton type='submit' title='Войти' />
         </Styled.Form>
       </Content>
-    </Container>
+    </Styled.Container>
   );
 };

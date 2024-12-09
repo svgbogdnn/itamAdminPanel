@@ -18,7 +18,7 @@ export const FormContainer = styled.div`
   min-width: 296px;
   padding: 24px;
   border-radius: 16px;
-  box-shadow: 0px 0px 20px 0px #60E2FF;
+  box-shadow: 0 0 20px 0 #60E2FF;
 `;
 
 export const Title = styled.p`

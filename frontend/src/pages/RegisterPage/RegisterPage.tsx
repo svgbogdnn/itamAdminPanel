@@ -1,5 +1,4 @@
 import React from 'react';
-import { Container } from '../../components/Container';
 import { Header } from '../../components/Header';
 import { Content } from '../../components/Content';
 import * as Styled from './RegisterPage.styled';
@@ -9,7 +8,7 @@ import { PrimaryCheckbox } from '../../components/PrimaryCheckbox';
 
 export const RegisterPage = () => {
   return (
-    <Container>
+    <Styled.Container>
       <Header links={[{ title: 'Вернуться назад' }]} />
       <Content title='Регистрация' links={[{ title: 'Уже есть аккаунт? Войти' }]}>
         <Styled.Form autoComplete='off'>
@@ -22,6 +21,6 @@ export const RegisterPage = () => {
           <PrimaryButton type='submit' title='Зарегистрироваться' />
         </Styled.Form>
       </Content>
-    </Container>
+    </Styled.Container>
   );
 };

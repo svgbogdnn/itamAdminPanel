@@ -1,0 +1,1 @@
+export { PrimaryTag } from './PrimaryTag';

@@ -1,0 +1,1 @@
+export { PrimaryTable } from './PrimaryTable';

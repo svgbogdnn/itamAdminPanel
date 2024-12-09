@@ -6,14 +6,30 @@ export const Container = styled.header`
   justify-content: flex-start;
   align-items: flex-start;
   width: 100%;
+
+  .ant-tabs-nav::before {
+    display: none;
+  }
+
+  .ant-tabs-tab {
+    justify-content: center;
+    min-width: 168px;
+    font-family: Actay;
+  }
+`;
+
+export const Group = styled.div`
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
 `;
 
 export const Nav = styled.div`
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 4px 20px;
+  padding: 4px 37px;
   background-color: #323d4e;
 `;
 

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Container } from '../../components/Container';
 import { Header } from '../../components/Header';
 import { Content } from '../../components/Content';
 import * as Styled from './LoginPage.styled';
@@ -11,6 +10,7 @@ export const LoginPage = () => {
   const [login, setLogin] = useState<string>('');
   const [password, setPassword] = useState<string>('');
 
+
   const handleClick = (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
     e.preventDefault();
     console.log(login);
@@ -19,7 +19,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <Container>
+    <Styled.Container>
       <Header links={[{ title: 'Вернуться назад' }]} />
       <Content title='Вход' links={[{ title: 'Нет аккаунта? Зарегистрироваться' }, { title: 'Забыли пароль?' }]}>
         <Styled.Form autoComplete='off'>
@@ -29,6 +29,6 @@ export const LoginPage = () => {
           <PrimaryButton type='submit' title='Войти' onClick={handleClick} />
         </Styled.Form>
       </Content>
-    </Container>
+    </Styled.Container>
   );
 };
