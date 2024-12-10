@@ -1,4 +1,3 @@
-'''
 from flask import render_template, request, redirect, url_for, flash, Blueprint, Response, jsonify
 from app.models import Course
 from app import db
@@ -866,10 +865,10 @@ def export():
     teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     return render_template('teacher/export.html', courses=courses)
-'''
+
 '''JSONIFY'''
 
-
+'''
 from flask import render_template, request, redirect, url_for, flash, Blueprint, Response, jsonify
 from app.models import Course
 from app import db
@@ -1692,7 +1691,7 @@ def export():
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-
+'''
 
 '''---------------------------------------------------------------------'''
 '''---------------------------------------------------------------------'''
