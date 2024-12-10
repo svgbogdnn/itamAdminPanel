@@ -1,3 +1,4 @@
+'''
 from flask import render_template, request, redirect, url_for, flash, Blueprint, Response, jsonify
 from app.models import Course
 from app import db
@@ -16,8 +17,7 @@ import os
 #maintain my man
 
 teacher = Blueprint('teacher', __name__, template_folder='templates')
-
-'''Overall settings'''
+#Overall settings
 @teacher.route('/dashboard', methods=['GET'])
 @login_required
 def dashboard():
@@ -192,7 +192,7 @@ def update_profile():
     flash('Profile updated successfully!', 'success')
     return redirect(url_for('teacher.profile'))
 
-'''Courses'''
+#Courses
 @teacher.route('/courses', methods=['GET'])
 def courses():
     teacher_id = current_user.id
@@ -270,7 +270,7 @@ def delete_course(course_id):
     flash('Course deleted successfully!', category='success')
     return redirect(url_for('teacher.courses'))
 
-'''Lessons'''
+#Lessons
 @teacher.route('/courses/<int:course_id>/lessons', methods=['GET'])
 def lessons(course_id):
     teacher_id = current_user.id
@@ -357,7 +357,7 @@ def analyze_feedback(course_id):
 
     return render_template('teacher/analyze_feedback.html', course=course, feedback_summary=feedback_summary)
 
-'''Attendance'''
+#Attendance
 # @teacher.route('/attendance', methods=['GET', 'POST'])
 # @login_required
 # def attendance():
@@ -506,7 +506,7 @@ def update_all_statuses():
 
     return jsonify({'success': True}), 200
 
-'''Feedback'''
+#Feedback
 @teacher.route('/feedback', methods=['GET'])
 def feedback():
     teacher_id = current_user.id
@@ -617,7 +617,7 @@ def delete_feedback(feedback_id):
     flash('Feedback deleted successfully!', 'success')
     return redirect(url_for('teacher.feedback'))
 
-'''Export'''
+#Export
 
 @teacher.route('/export/csv', methods=['GET'])
 def export_csv():
@@ -866,10 +866,10 @@ def export():
     teacher_id = current_user.id
     courses = Course.query.filter_by(tutor_id=teacher_id).all()
     return render_template('teacher/export.html', courses=courses)
-
+'''
 '''JSONIFY'''
 
-'''
+
 from flask import render_template, request, redirect, url_for, flash, Blueprint, Response, jsonify
 from app.models import Course
 from app import db
@@ -1692,7 +1692,7 @@ def export():
 
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-'''
+
 
 '''---------------------------------------------------------------------'''
 '''---------------------------------------------------------------------'''
@@ -1796,6 +1796,7 @@ def student_attendance(id):
                                          }})
 
     return attendance_inf
+
 @teacher.route('/student/<int:id>/courses')
 def student_courses(id):
     student=User.query.get(id)
