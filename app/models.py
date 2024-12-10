@@ -26,6 +26,11 @@ class User(db.Model, UserMixin):
     phone_number = db.Column(db.String(20), nullable=True)
     date_of_birth = db.Column(db.Date, nullable=True)  # Дата рождения
     accept_policy = db.Column(db.Boolean, nullable=False)  # Чекбокс принятия политики
+    address = db.Column(db.Text, nullable=True)
+    telegram_link = db.Column(db.Text, nullable=True)
+    two_factor_enabled = db.Column(db.Boolean, default=False)
+    bio = db.Column(db.Text, nullable=True)
+    favorite_sport_club = db.Column(db.String(100), nullable=True)
     # courses = db.relationship(
     #     'Course',
     #     secondary='course_student',

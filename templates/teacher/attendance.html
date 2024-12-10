@@ -68,20 +68,10 @@
 
             <!-- Фильтр по дате (будет обновляться через JS) -->
             <div class="filter">
-                Дата
-                <div class="date-filter">
-                    <select name="date" id="date-filter">
-                        <option value="">Select a date</option>
-                        {% if lessons %}
-                            {% for lesson in lessons %}
-                                <option value="{{ lesson.date }}" {% if lesson.date in date_filter %}selected{% endif %}>
-                                    {{ lesson.date }}
-                                </option>
-                            {% endfor %}
-                        {% endif %}
-                    </select>
-                </div>
+                <label for="date-filter">Дата:</label>
+                <input type="date" id="date-filter" name="date" value="{{ date_filter|join(',') }}">
             </div>
+
 
             <!-- Фильтр по статусу -->
             <div class="filter">

@@ -105,6 +105,7 @@ def mark_notification_as_read(notification_id):
     notification.status = 'read'
     db.session.commit()
     return jsonify({'success': True})
+
 @teacher.route('/notifications/all', methods=['GET'])
 @login_required
 def all_notifications():
@@ -120,13 +121,26 @@ def profile():
     user = User.query.filter_by(id=current_user.id).first()
 
     if request.method == 'POST':
-        # Собираем данные из формы
-        user.full_name = request.form.get('full_name')
+        # Собираем обязательные данные из формы
+        user.full_name = request.form.get('full_name', user.full_name).strip()
+        user.email = request.form.get('email', user.email).strip()
+        user.phone_number = request.form.get('phone_number', user.phone_number).strip()
+
+        # Проверка обязательных полей
+        if not user.full_name or not user.email or not user.phone_number:
+            flash('Full Name, Email, and Phone Number are required fields.', 'error')
+            return redirect(url_for('teacher.profile'))
+
+        # Дополнительные необязательные данные
         user.nickname = request.form.get('nickname')
         user.university = request.form.get('university')
         user.institute = request.form.get('institute')
-        user.phone_number = request.form.get('phone_number')
         user.date_of_birth = request.form.get('date_of_birth') or None
+        user.address = request.form.get('address')
+        user.telegram_link = request.form.get('telegram_link')
+        user.two_factor_enabled = bool(request.form.get('two_factor_enabled'))
+        user.bio = request.form.get('bio')
+        user.favorite_sport_club = request.form.get('favorite_sport_club')
 
         # Обработка загруженного фото
         if 'profile_picture' in request.files:
@@ -138,7 +152,6 @@ def profile():
                 user.profile_picture = picture_path
 
         db.session.commit()
-
         flash('Profile updated successfully!', 'success')
         return redirect(url_for('teacher.profile'))
 
@@ -150,30 +163,34 @@ def update_profile():
     from app.models import User
     user = User.query.filter_by(id=current_user.id).first()
 
-    if request.method == 'POST':
-        # Обновление данных пользователя
-        user.full_name = request.form.get('full_name')
-        user.nickname = request.form.get('nickname')
-        user.university = request.form.get('university')
-        user.institute = request.form.get('institute')
-        user.phone_number = request.form.get('phone_number')
-        user.date_of_birth = request.form.get('date_of_birth') or None
+    # Собираем данные из формы (обновление)
+    user.full_name = request.form.get('full_name', user.full_name).strip()
+    user.email = request.form.get('email', user.email).strip()
+    user.phone_number = request.form.get('phone_number', user.phone_number).strip()
 
-        # Обработка изображения профиля
-        if 'profile_picture' in request.files:
-            picture = request.files['profile_picture']
-            if picture:
-                picture_filename = secure_filename(picture.filename)
-                picture_path = os.path.join('static', 'images', picture_filename)
-                picture.save(picture_path)
+    # Дополнительные данные
+    user.nickname = request.form.get('nickname')
+    user.university = request.form.get('university')
+    user.institute = request.form.get('institute')
+    user.date_of_birth = request.form.get('date_of_birth') or None
+    user.address = request.form.get('address')
+    user.telegram_link = request.form.get('telegram_link')
+    user.two_factor_enabled = bool(request.form.get('two_factor_enabled'))
+    user.bio = request.form.get('bio')
+    user.favorite_sport_club = request.form.get('favorite_sport_club')
 
-                user.profile_picture = picture_path
+    # Обработка изображения профиля
+    if 'profile_picture' in request.files:
+        picture = request.files['profile_picture']
+        if picture:
+            picture_filename = secure_filename(picture.filename)
+            picture_path = os.path.join('static', 'images', picture_filename)
+            picture.save(picture_path)
+            user.profile_picture = picture_path
 
-        db.session.commit()
-        flash('Profile updated successfully!', 'success')
-        return redirect(url_for('teacher.profile'))  # Переход к профилю после обновления
-
-    return redirect(url_for('teacher.profile'))  # В случае ошибки просто возвращаем на страницу профиля
+    db.session.commit()
+    flash('Profile updated successfully!', 'success')
+    return redirect(url_for('teacher.profile'))
 
 '''Courses'''
 @teacher.route('/courses', methods=['GET'])
@@ -411,30 +428,35 @@ def analyze_feedback(course_id):
 
 @teacher.route('/attendance', methods=['GET'])
 def attendance():
-    # Получаем все курсы и уроки для фильтрации
     courses = Course.query.all()
     lessons = Lesson.query.all()
 
     # Чтение параметров фильтра из запроса
     course_filter = request.args.getlist('course')
-    date_filter = request.args.getlist('date')
+    date_filter = request.args.getlist('date')  # Теперь это список
     status_filter = request.args.getlist('status')
 
-    # Начинаем базовый запрос для посещаемости
+    # Базовый запрос
     query = Attendance.query
 
-    if course_filter and course_filter != ['']:
+    if course_filter:
         query = query.join(Lesson).filter(Lesson.course_id.in_(course_filter))
-    if date_filter and date_filter != ['']:
+    if date_filter:
         query = query.filter(Attendance.lesson.has(Lesson.date.in_(date_filter)))
-    if status_filter and status_filter != ['']:
+    if status_filter:
         query = query.filter(Attendance.status.in_(status_filter))
 
-    # Получаем записи посещаемости
     attendance_records = query.all()
 
-    return render_template('teacher/attendance.html', courses=courses, lessons=lessons, attendance_records=attendance_records,
-                           course_filter=course_filter, date_filter=date_filter, status_filter=status_filter)
+    return render_template(
+        'teacher/attendance.html',
+        courses=courses,
+        lessons=lessons,
+        attendance_records=attendance_records,
+        course_filter=course_filter,
+        date_filter=date_filter,
+        status_filter=status_filter,
+    )
 
 @teacher.route('/get_lessons_for_course/<int:course_id>', methods=['GET'])
 def get_lessons_for_course(course_id):

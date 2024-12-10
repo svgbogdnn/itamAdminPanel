@@ -14,8 +14,11 @@
 
     <!-- Профиль пользователя -->
     <div class="user-profile">
-        <a href="{{ url_for('teacher.profile') }}" class="profile-btn">👤</a>
+        <img src="{{ current_user.profile_picture or url_for('static', filename='images/default-avatar.jpg') }}"
+             alt="Profile Picture" class="navbar-profile-picture">
+        <a href="{{ url_for('teacher.profile') }}">👤 Profile</a>
     </div>
+
 </div>
 
 <!-- Всплывающее окно уведомлений -->
